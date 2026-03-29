@@ -1,7 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Play, Puzzle, GraduationCap, MonitorPlay, Users, Settings, Search, Crown } from "lucide-react";
+import { Play, Puzzle, GraduationCap, MonitorPlay, Users, Settings, Search, Crown, LogOut, LogIn } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { signout } from "@/actions/auth";
 
 const navItems = [
   { href: "/play", icon: <Play size={20} />, label: "Play" },
@@ -18,6 +20,7 @@ const bottomItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, profile, loading } = useAuth();
 
   return (
     <div className="w-16 md:w-64 h-screen bg-bg-sidebar flex flex-col border-r border-white/5 fixed left-0 top-0 z-50">
@@ -60,15 +63,57 @@ export function Sidebar() {
             active={pathname === item.href}
           />
         ))}
+
+        {/* Auth section */}
         <div className="px-2 mt-3 hidden md:block">
-          <Link
-            href="/register"
-            className="flex items-center justify-center gap-2 w-full bg-primary-chess hover:bg-primary-hover text-black font-black py-2.5 rounded-lg transition-all hover:shadow-gold text-sm"
-          >
-            <Crown size={16} />
-            Sign Up Free
-          </Link>
+          {!loading && user ? (
+            <div className="flex flex-col gap-2">
+              {/* User info */}
+              <div className="flex items-center gap-2 px-2 py-1.5">
+                <div className="w-7 h-7 rounded-lg bg-primary-chess/20 border border-primary-chess/30 flex items-center justify-center shrink-0">
+                  <span className="text-xs font-black text-primary-chess">
+                    {(profile?.full_name ?? user.email ?? "?")[0].toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-xs font-bold text-gray-200 truncate leading-none">
+                    {profile?.full_name ?? user.email?.split("@")[0]}
+                  </span>
+                  <span className="text-[10px] text-primary-chess font-semibold">
+                    {profile?.elo ?? 1200} ELO
+                  </span>
+                </div>
+              </div>
+              {/* Sign out */}
+              <form action={signout}>
+                <button
+                  type="submit"
+                  className="flex items-center justify-center gap-2 w-full bg-white/5 hover:bg-white/10 border border-white/10 text-gray-400 hover:text-gray-200 font-semibold py-2 rounded-lg transition-all text-xs"
+                >
+                  <LogOut size={13} />
+                  Sign Out
+                </button>
+              </form>
+            </div>
+          ) : !loading ? (
+            <Link
+              href="/register"
+              className="flex items-center justify-center gap-2 w-full bg-primary-chess hover:bg-primary-hover text-black font-black py-2.5 rounded-lg transition-all hover:shadow-gold text-sm"
+            >
+              <Crown size={16} />
+              Sign Up Free
+            </Link>
+          ) : null}
         </div>
+
+        {/* Mobile: show login icon */}
+        {!loading && !user && (
+          <div className="md:hidden flex justify-center mt-3">
+            <Link href="/login" className="w-10 h-10 rounded-lg bg-primary-chess flex items-center justify-center">
+              <LogIn size={18} className="text-black" />
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { ChessBoardGame } from "@/features/chess-engine/components/ChessBoardGame";
 import { HandCoins, Info, Crown, Sword, Lock, Check } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 type PlayMode = "free" | "cash";
 
@@ -73,10 +74,10 @@ const leagues = [
   },
 ];
 
-// The user's current ELO (mock — will come from Supabase later)
-const USER_ELO = 1200;
-
 export default function PlayPage() {
+  const { profile } = useAuth();
+  const USER_ELO = profile?.elo ?? 1200;
+
   const [mode, setMode] = useState<PlayMode>("free");
   const [selectedLeague, setSelectedLeague] = useState(leagues[1]);
   const [selectedBet, setSelectedBet] = useState(10);

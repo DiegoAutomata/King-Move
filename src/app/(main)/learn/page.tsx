@@ -13,11 +13,14 @@ export default function LearnPage() {
   const handleCustomSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
-    
+
     const newMessages = [...messages, { id: Date.now().toString(), role: 'user', content: input }];
     setMessages(newMessages);
     setInput("");
     setIsLoading(true);
+
+    const assistantId = Date.now().toString() + "a";
+    setMessages([...newMessages, { id: assistantId, role: 'assistant', content: '' }]);
 
     try {
       const res = await fetch('/api/chat', {
@@ -25,10 +28,28 @@ export default function LearnPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: newMessages, fen })
       });
-      // Simplified mock integration logic for now
-      setIsLoading(false);
-      setMessages([...newMessages, { id: Date.now().toString() + "a", role: 'assistant', content: "Analisando posición..." }]);
+
+      if (!res.ok || !res.body) {
+        throw new Error('API error');
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullText += decoder.decode(value, { stream: true });
+        setMessages(prev =>
+          prev.map(m => m.id === assistantId ? { ...m, content: fullText } : m)
+        );
+      }
     } catch {
+      setMessages(prev =>
+        prev.map(m => m.id === assistantId ? { ...m, content: 'Error connecting to AI. Please try again.' } : m)
+      );
+    } finally {
       setIsLoading(false);
     }
   };
@@ -99,7 +120,7 @@ export default function LearnPage() {
               </div>
             ))
           )}
-          {isLoading && (
+          {isLoading && messages[messages.length - 1]?.content === '' && (
             <div className="flex gap-3 flex-row">
               <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center bg-purple-600">
                 <Bot size={16} className="text-white" />
