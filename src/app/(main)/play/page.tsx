@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChessBoardGame } from "@/features/chess-engine/components/ChessBoardGame";
-import { Sword, Crown, Loader2, X, Zap, Star } from "lucide-react";
+import { Sword, Crown, Loader2, X, Zap, Star, Bot } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlayerLevel } from "@/hooks/usePlayerLevel";
 import { useMatchmaking } from "@/features/chess-engine/hooks/useMatchmaking";
+import { difficultyFromElo, DIFFICULTY_LABELS, DIFFICULTY_COLORS, type BotDifficulty } from "@/features/chess-engine/lib/botEngine";
 
 type PlayMode = "free" | "token";
 
@@ -19,11 +21,16 @@ const TOKEN_LEAGUES = [
 ];
 
 export default function PlayPage() {
+  const router = useRouter();
   const { user, profile } = useAuth();
   const { level, tokenBalance, xp, xpToNextLevel, progressPercent, canPlayToken } = usePlayerLevel();
 
   const [mode, setMode] = useState<PlayMode>("free");
   const [selectedTime, setSelectedTime] = useState("10 min");
+
+  const playerElo = profile?.elo ?? 1200;
+  const autoDifficulty = difficultyFromElo(playerElo);
+  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>(autoDifficulty);
 
   const { status: matchStatus, error: matchError, startSearch, cancelSearch } = useMatchmaking();
   const isSearching = matchStatus === "searching";
@@ -34,9 +41,14 @@ export default function PlayPage() {
       gameType: "free",
       timeControl: selectedTime,
       betAmount: 0,
-      userElo: profile.elo,
+      userElo: playerElo,
       userId: user.id,
     });
+  }
+
+  function handlePlayBot() {
+    const depthMap: Record<BotDifficulty, number> = { easy: 1, medium: 2, hard: 3, expert: 4 };
+    router.push(`/game/bot?depth=${depthMap[botDifficulty]}&color=random`);
   }
 
   return (
@@ -148,6 +160,42 @@ export default function PlayPage() {
                 <span className="text-gray-400">Draw</span>
                 <span className="text-gray-300 font-bold">+10 XP</span>
               </div>
+            </div>
+
+            {/* vs Bot */}
+            <div className="bg-bg-panel border border-white/5 rounded-xl p-3 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bot size={14} className="text-primary-chess" />
+                  <p className="text-xs text-gray-400 font-semibold">Play vs Bot</p>
+                </div>
+                <span className="text-[10px] text-gray-600">Always available</span>
+              </div>
+
+              {/* Selector de dificultad */}
+              <div className="grid grid-cols-4 gap-1">
+                {(["easy", "medium", "hard", "expert"] as BotDifficulty[]).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setBotDifficulty(d)}
+                    className={`py-1 rounded-lg text-[10px] font-bold capitalize transition-all border ${
+                      botDifficulty === d
+                        ? DIFFICULTY_COLORS[d]
+                        : "border-white/5 text-gray-600 hover:text-gray-400"
+                    }`}
+                  >
+                    {DIFFICULTY_LABELS[d]}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={handlePlayBot}
+                className="w-full bg-primary-chess/10 hover:bg-primary-chess/20 border border-primary-chess/20 text-primary-chess font-black text-sm py-2.5 rounded-xl transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+              >
+                <Bot size={15} />
+                Play vs Bot ({DIFFICULTY_LABELS[botDifficulty]})
+              </button>
             </div>
 
             <div className="mt-auto">
