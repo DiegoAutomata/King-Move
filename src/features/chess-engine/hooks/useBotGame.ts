@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { Chess } from 'chess.js'
-import { getBotMove, BOT_DEPTHS, type BotDifficulty } from '../lib/botEngine'
+import { stockfishEngine } from '../lib/stockfishEngine'
+import type { BotDifficulty } from '../lib/botEngine'
 
 export type BotGameStatus = 'idle' | 'playing' | 'won' | 'lost' | 'draw'
 
@@ -29,6 +30,16 @@ interface UseBotGameReturn extends BotGameState {
   resetGame: () => void
 }
 
+function resolveStatus(chess: Chess, playerColor: 'white' | 'black'): { status: BotGameStatus; reason: string | null } {
+  if (chess.isCheckmate()) {
+    const loser = chess.turn() === 'w' ? 'white' : 'black'
+    return { status: loser === playerColor ? 'lost' : 'won', reason: 'Checkmate' }
+  }
+  if (chess.isStalemate()) return { status: 'draw', reason: 'Stalemate' }
+  if (chess.isDraw())      return { status: 'draw', reason: 'Draw' }
+  return { status: 'playing', reason: null }
+}
+
 export function useBotGame(): UseBotGameReturn {
   const [state, setState] = useState<BotGameState>({
     fen: new Chess().fen(),
@@ -41,20 +52,53 @@ export function useBotGame(): UseBotGameReturn {
     resultReason: null,
   })
 
-  const chessRef = useRef(new Chess())
+  const chessRef  = useRef(new Chess())
+  const stateRef  = useRef(state)
+  stateRef.current = state
 
-  const resolveStatus = (chess: Chess, playerColor: 'white' | 'black'): { status: BotGameStatus; reason: string | null } => {
-    if (chess.isCheckmate()) {
-      const loser = chess.turn() === 'w' ? 'white' : 'black'
-      return {
-        status: loser === playerColor ? 'lost' : 'won',
-        reason: 'Checkmate',
-      }
+  // Pre-init the engine as soon as the hook mounts
+  useEffect(() => {
+    stockfishEngine.init().catch(() => {/* ignore init errors */})
+    return () => { /* keep engine alive across games; destroy on unmount */ }
+  }, [])
+
+  const runBotMove = useCallback(async (
+    chess: Chess,
+    playerColor: 'white' | 'black',
+    difficulty: BotDifficulty,
+  ) => {
+    setState(prev => ({ ...prev, isThinking: true }))
+
+    const sfMove = await stockfishEngine.getBestMove(chess.fen(), difficulty)
+
+    if (!sfMove) {
+      setState(prev => ({ ...prev, isThinking: false }))
+      return
     }
-    if (chess.isStalemate())  return { status: 'draw', reason: 'Stalemate' }
-    if (chess.isDraw())       return { status: 'draw', reason: 'Draw' }
-    return { status: 'playing', reason: null }
-  }
+
+    const result = chess.move({
+      from: sfMove.from,
+      to:   sfMove.to,
+      promotion: sfMove.promotion ?? 'q',
+    })
+
+    if (!result) {
+      setState(prev => ({ ...prev, isThinking: false }))
+      return
+    }
+
+    const { status, reason } = resolveStatus(chess, playerColor)
+
+    setState(prev => ({
+      ...prev,
+      fen:         chess.fen(),
+      lastMove:    { from: sfMove.from, to: sfMove.to },
+      moves:       [...prev.moves, { san: result.san, from: sfMove.from, to: sfMove.to }],
+      isThinking:  false,
+      status,
+      resultReason: reason,
+    }))
+  }, [])
 
   const startGame = useCallback((
     colorChoice: 'white' | 'black' | 'random',
@@ -78,57 +122,21 @@ export function useBotGame(): UseBotGameReturn {
       resultReason: null,
     })
 
-    // Si el jugador eligió negras, el bot mueve primero
     if (playerColor === 'black') {
-      setTimeout(() => runBotMove(chess, playerColor, difficulty), 300)
+      runBotMove(chess, playerColor, difficulty)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const runBotMove = (chess: Chess, playerColor: 'white' | 'black', difficulty: BotDifficulty) => {
-    setState(prev => ({ ...prev, isThinking: true }))
-
-    // setTimeout para no bloquear el hilo principal
-    setTimeout(() => {
-      const depth = BOT_DEPTHS[difficulty]
-      const botMove = getBotMove(chess.fen(), depth)
-
-      if (!botMove) {
-        setState(prev => ({ ...prev, isThinking: false }))
-        return
-      }
-
-      const result = chess.move({ from: botMove.from, to: botMove.to, promotion: botMove.promotion ?? 'q' })
-      if (!result) {
-        setState(prev => ({ ...prev, isThinking: false }))
-        return
-      }
-
-      const { status, reason } = resolveStatus(chess, playerColor)
-
-      setState(prev => ({
-        ...prev,
-        fen: chess.fen(),
-        lastMove: { from: botMove.from, to: botMove.to },
-        moves: [...prev.moves, { san: result.san, from: botMove.from, to: botMove.to }],
-        isThinking: false,
-        status,
-        resultReason: reason,
-      }))
-    }, 50)
-  }
+  }, [runBotMove])
 
   const makePlayerMove = useCallback((from: string, to: string, promotion?: string): boolean => {
+    const { status, isThinking, playerColor, difficulty } = stateRef.current
     const chess = chessRef.current
 
-    if (state.status !== 'playing' || state.isThinking) return false
+    if (status !== 'playing' || isThinking) return false
 
-    // Verificar que es el turno del jugador
     const isWhiteTurn = chess.turn() === 'w'
-    if (state.playerColor === 'white' && !isWhiteTurn) return false
-    if (state.playerColor === 'black' && isWhiteTurn) return false
+    if (playerColor === 'white' && !isWhiteTurn) return false
+    if (playerColor === 'black' && isWhiteTurn)  return false
 
-    // Intentar el movimiento
     let result
     try {
       result = chess.move({ from, to, promotion: promotion ?? 'q' })
@@ -137,25 +145,23 @@ export function useBotGame(): UseBotGameReturn {
     }
     if (!result) return false
 
-    const { status, reason } = resolveStatus(chess, state.playerColor)
+    const { status: newStatus, reason } = resolveStatus(chess, playerColor)
 
     setState(prev => ({
       ...prev,
-      fen: chess.fen(),
-      lastMove: { from, to },
-      moves: [...prev.moves, { san: result.san, from, to }],
-      status,
+      fen:          chess.fen(),
+      lastMove:     { from, to },
+      moves:        [...prev.moves, { san: result.san, from, to }],
+      status:       newStatus,
       resultReason: reason,
     }))
 
-    // Si la partida sigue, que el bot responda
-    if (status === 'playing') {
-      runBotMove(chess, state.playerColor, state.difficulty)
+    if (newStatus === 'playing') {
+      runBotMove(chess, playerColor, difficulty)
     }
 
     return true
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state])
+  }, [runBotMove])
 
   const resetGame = useCallback(() => {
     const chess = new Chess()

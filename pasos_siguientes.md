@@ -1,5 +1,5 @@
 # Plan de Acción — King Move
-> Última actualización: 2026-03-30 (Sesión 4)
+> Última actualización: 2026-03-30 (Sesión 7)
 > Presupuesto escaso. Prioridad: funcionalidad core sobre cosmética.
 
 ---
@@ -35,63 +35,55 @@
 - ✅ Página `/cash` con balance $KING, historial, cómo ganar tokens
 - ✅ Tipos `database.ts` actualizados con todos los campos nuevos
 
-### 2026-03-30 — Sesión 6: Features Finales — Engagement + Growth
+### 2026-03-30 — Sesión 3: Producción — Fase 1 y 2
 **Completado:**
-- ✅ **C.4 Browser notifications**: `requestNotificationPermission()` al entrar al juego; notificación nativa cuando el oponente mueve y la pestaña está en segundo plano; tag único para reemplazar notificación anterior
-- ✅ **B.3 Comeback King**: server action `checkComebackKing()` usa Lichess cloud-eval API para detectar si el jugador estaba en posición < -2.0 antes de ganar; trigger en game page al terminar; toast de celebración; API proxy `/api/lichess-eval`
-- ✅ **D.1 Análisis post-partida**: página `/game/[id]/analysis` con tablero interactivo, barra de evaluación visual, evaluación de Lichess por posición con cache, navegación por teclado (←→), lista de movimientos clickeable; botón "Analyze" en result overlay
-- ✅ **D.2 Torneos básicos**: tablas `tournaments`, `tournament_participants`, `tournament_matches` con RLS; RPCs `join_tournament()`, `start_tournament()` (auto al llegar al cupo), `advance_tournament()` (avanza bracket y distribuye premio); páginas `/tournaments` (lista + crear) y `/tournaments/[id]` (bracket visual + participantes); Tournaments en Sidebar
-
-### 2026-03-30 — Sesión 5: Apertura Pública — Seguridad + Features
-**Completado:**
-- ✅ **A.2 Validación server-side de movimientos**: Edge Function `submit-move` desplegada en Supabase; valida JWT, verifica turno, valida movimiento con chess.js server-side, actualiza timers atómicamente, llama `resolve_game` si partida termina, escribe PGN; `useOnlineGame.makeMove` ahora usa `supabase.functions.invoke('submit-move')` con rollback optimista
-- ✅ **A.3 Rate limiting**: middleware.ts actualizado con rate limiter in-memory: 10 req/min para `/api/chat`, 60 req/min para `/api/puzzle/next`; documentado que requiere Upstash/Redis para escalar
-- ✅ **B.4 Search de jugadores**: `/search` ahora funcional con debounce 300ms, búsqueda por nombre/email vía `ilike`, resultados con ELO, liga, nivel, streak; botón "challenge" redirige a `/play`
-- ✅ **C.2 PGN estándar**: función SQL `build_pgn_from_moves()` + trigger `trg_auto_build_pgn` que escribe `games.pgn` automáticamente cuando una partida pasa a `finished`; Edge Function también construye PGN directamente
-- ✅ **C.3 Avatar upload**: bucket `avatars` en Supabase Storage (público, 2MB, jpg/png/webp); RLS policies para upload/update/delete propios; columna `avatar_url` en `profiles`; Settings tiene upload con preview; Sidebar muestra avatar si existe
+- ✅ Reloj de tiempo real en `/game/[id]`: columnas `white_time_ms`, `black_time_ms`, `last_move_at`; trigger DB; `useGameClock`; deducción de tiempo en cada movimiento; rojo pulsante <30s; RPC `flag_timeout`
+- ✅ Forgot Password + Reset Password con flows completos
+- ✅ Dashboard real (`/dashboard`): stats reales (W/D/L, win rate, puzzles, logros), barra XP, partidas recientes
+- ✅ Watch page real (`/watch`): partidas `active` en tiempo real vía Realtime
+- ✅ Puzzle Rush (`/puzzles/rush`): timer 5 min, puzzles en cadena vía Lichess, pre-fetch background, XP por solve
+- ✅ Números reales en landing: Players, Games Played, Puzzles Solved desde BD
+- ✅ AI Tutor verificado: Gemini 2.5 Flash via OpenRouter
 
 ### 2026-03-30 — Sesión 4: Beta Cerrada — Seguridad + Calidad
 **Completado:**
-- ✅ **A.1 Matchmaking timeout**: `pg_cron` habilitado en Supabase; cron job cada minuto que aborta games `waiting` con más de 5 min de antigüedad
-- ✅ **B.1 ELO matching ±200**: columna `creator_elo` en `games` + índice; matchmaking filtra por rango ELO al buscar y almacena ELO del creador al crear partida
-- ✅ **B.2 Historial de movimientos**: `moves: StoredMove[]` expuesto desde `useOnlineGame`; panel con lista PGN (1. e4 e5 2. Nf3...) en right panel del juego; último movimiento resaltado en amarillo-verde; auto-scroll al último movimiento
-- ✅ **C.1 Sentry**: `@sentry/nextjs` instalado; `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts` creados; `next.config.ts` envuelto con `withSentryConfig`; variables en `.env.local.example`; activado solo en producción
+- ✅ Matchmaking timeout: `pg_cron` cada minuto aborta games `waiting` > 5 min
+- ✅ ELO matching ±200: columna `creator_elo` en `games`; matchmaking filtra por rango ELO
+- ✅ Historial de movimientos en UI: panel PGN en right panel del juego; último movimiento resaltado; auto-scroll
+- ✅ Sentry: `@sentry/nextjs` instalado; configs creadas; activado solo en producción
 
-### 2026-03-30 — Sesión 3: Producción — Fase 1 y 2
+### 2026-03-30 — Sesión 5: Apertura Pública — Seguridad + Features
 **Completado:**
-- ✅ **Reloj de tiempo real en `/game/[id]`**: columnas `white_time_ms`, `black_time_ms`, `last_move_at`; trigger DB inicializa timers al activarse la partida; `useGameClock` hook client-side con countdown MM:SS; deducción de tiempo en cada movimiento; rojo pulsante <30s; RPC `flag_timeout` server-side
-- ✅ **Forgot Password**: página `/forgot-password` + `ForgotPasswordForm` con confirmación de envío
-- ✅ **Reset Password**: página `/update-password` + `UpdatePasswordForm` con toggle visibilidad + validación de coincidencia
-- ✅ **Dashboard real** (`/dashboard`): stats reales (W/D/L, win rate, puzzles, logros), barra XP, partidas recientes, quick actions — agregado al Sidebar
-- ✅ **Watch page real** (`/watch`): partidas `active` en tiempo real vía Realtime, vacío elegante, botón Spectate
-- ✅ **Puzzle Rush** (`/puzzles/rush`): timer 5 min, puzzles en cadena vía Lichess `/api/puzzle/next`, pre-fetch background, XP por solve, pantalla final con rating
-- ✅ **Números reales en landing**: Players, Games Played, Puzzles Solved desde BD (muestra "—" si es 0)
-- ✅ **AI Tutor verificado**: OPENROUTER_API_KEY presente, `/api/chat` usa Gemini 2.5 Flash correctamente
-- ✅ `.env.local.example` documentado con todas las keys necesarias
+- ✅ Validación server-side de movimientos: Edge Function `submit-move` con chess.js server-side, JWT, timers atómicos, PGN
+- ✅ Rate limiting: middleware in-memory 10 req/min `/api/chat`, 60 req/min `/api/puzzle/next`
+- ✅ Search de jugadores: búsqueda por nombre/email con debounce 300ms, ELO/liga/nivel/streak
+- ✅ PGN estándar: trigger `trg_auto_build_pgn` escribe `games.pgn` automáticamente al terminar
+- ✅ Avatar upload: bucket `avatars` + RLS + Settings UI + Sidebar
+
+### 2026-03-30 — Sesión 6: Features Finales — Engagement + Growth
+**Completado:**
+- ✅ Browser notifications: notificación nativa cuando el oponente mueve y la pestaña está en segundo plano
+- ✅ Comeback King: server action con Lichess cloud-eval API detecta posición ≤ -2.0 antes de ganar
+- ✅ Análisis post-partida: `/game/[id]/analysis` con tablero interactivo, barra eval visual, nav teclado
+- ✅ Torneos básicos: tablas `tournaments`, `tournament_participants`, `tournament_matches` + RPCs + bracket visual
 
 ---
 
-## Estado Actual — Inventario Real
+## Estado Actual
 
 ### ✅ Completado y funcionando
-- Landing page con stats reales
-- Layout con Sidebar responsive (nivel, XP, $KING, Dashboard)
-- Auth completa: login, register, Google OAuth, reset password (todos los flows)
-- Sistema XP + niveles (1–20), daily login bonus, progression bar
-- Tabla `profiles` con ELO, xp, level, token_balance, win_streak, puzzle_count
-- Tabla `achievements` con 5 logros activos (falta Comeback King)
-- Matchmaking real con Supabase Realtime
-- Partidas online en `/game/[id]` con **reloj real** (MM:SS)
+- Auth completa: login, register, Google OAuth, reset password
+- Sistema XP + niveles (1–20), daily login bonus
+- Matchmaking real + reloj en tiempo real
 - Wallet $KING token (custodial off-chain)
-- Leaderboard y historial en `/social`
-- Settings: perfil, level/XP, logros (accordion)
-- Puzzles interactivos con Lichess API + XP al resolver
-- **Puzzle Rush** en `/puzzles/rush` (5 min, puzzles en cadena)
-- Watch page con partidas activas reales
-- Dashboard con stats reales del jugador
-- AI Tutor en `/learn` (Gemini 2.5 Flash via OpenRouter)
+- Leaderboard, historial, settings, search de jugadores
+- Puzzles interactivos + Puzzle Rush + XP al resolver
+- Watch page + Dashboard con stats reales
+- AI Tutor (Gemini 2.5 Flash)
+- Validación server-side de movimientos (Edge Function)
+- Análisis post-partida + Torneos básicos + Sentry
 
-### ❌ Pendiente — Ordenado por prioridad
+### ❌ Pendiente
 
 ---
 
@@ -99,87 +91,73 @@
 
 ---
 
-### ÁREA A — Seguridad (alta prioridad para apertura pública)
+### ÁREA E — Bot / Jugar contra el motor (bloqueador UX)
 
-**A.1 — Race condition en matchmaking ✅ COMPLETADO**
-- Timeout automático implementado con pg_cron: cron job cada minuto aborta games `waiting` > 5 min
+**E.1 — Motor Stockfish.js via Web Worker** ← PRÓXIMA PRIORIDAD
 
-**A.2 — Validación server-side de movimientos ✅ COMPLETADO**
-- Edge Function `submit-move` valida con chess.js server-side; cliente usa `supabase.functions.invoke`
+**Problema actual:**
+El bot en `/game/bot` usa un minimax propio que corre en el **hilo principal de JS**.
+Aunque hay un `setTimeout(..., 50)`, el cálculo minimax bloquea el browser varios segundos en positions complejas, haciendo la UI irresponsable. Además el ELO real máximo del engine custom es ~1500, no los ~1800 que dice la UI.
 
-**A.3 — Rate limiting en APIs ✅ COMPLETADO**
-- Middleware in-memory: 10 req/min chat, 60 req/min puzzles. Nota: requiere Upstash para multi-instancia
+**Solución: Stockfish.js como Web Worker**
+- Stockfish es el motor de ajedrez más fuerte del mundo, compilado a WebAssembly
+- Corre en un Web Worker (hilo separado → no bloquea la UI nunca)
+- Protocolo UCI: se le manda el FEN, devuelve el mejor movimiento
+- `setoption name Skill Level value N` (0–20) → ELO calibrado real:
+  - Skill 3 → ~800 ELO (Beginner)
+  - Skill 8 → ~1200 ELO (Intermediate)
+  - Skill 13 → ~1600 ELO (Advanced)
+  - Skill 17 → ~2000 ELO (Expert)
+  - Skill 20 → ~2800 ELO (Master)
+- Completamente gratuito, sin API key, sin servidor
+- Lo usan Lichess, Chess.com, ChessKid — estándar de la industria
+
+**Implementación:**
+1. Descargar `stockfish.js` (WASM build) → `/public/stockfish.js`
+2. Reemplazar `botEngine.ts` con `StockfishWorker` usando `new Worker('/stockfish.js')`
+3. Actualizar `useBotGame.ts` para comunicarse via UCI (async, promesa por movimiento)
+4. Mapear las 4 dificultades a Skill Level: easy=3, medium=8, hard=13, expert=17
+
+**Costo:** Archivo ~6MB en `/public/`, carga lazy al entrar a `/game/bot`. 0€/mes.
 
 ---
 
-### ÁREA B — Features de Engagement
+### ÁREA F — Escalabilidad de Producción
 
-**B.1 — ELO Matching real ✅ COMPLETADO**
-- `creator_elo` almacenado al crear game; matchmaking filtra ±200 ELO al buscar oponente
+**F.1 — Rate limiting con Upstash Redis**
+- El rate limiter actual (`middleware.ts`) es in-memory
+- Falla con múltiples instancias de Vercel (cada instancia tiene su propio contador)
+- Fix: reemplazar con `@upstash/ratelimit` + `@upstash/redis`
+- Costo: plan gratuito de Upstash cubre hasta 10k requests/día
 
-**B.2 — Historial de movimientos en UI del juego ✅ COMPLETADO**
-- Panel PGN en right panel del juego; último movimiento resaltado; auto-scroll
-
-**B.3 — Comeback King achievement ✅ COMPLETADO**
-- Usa Lichess cloud-eval API; server action post-partida detecta posición ≤ -2.0 → ganó → award
-
-**B.4 — Search de jugadores ✅ COMPLETADO**
-- Búsqueda en tiempo real por nombre/email con debounce; muestra ELO, liga, nivel, streak
-
----
-
-### ÁREA C — Calidad y Operaciones
-
-**C.1 — Error monitoring (Sentry) ✅ COMPLETADO**
-- `@sentry/nextjs` instalado; configs creadas; `withSentryConfig` en next.config.ts; activado solo en producción
-
-**C.2 — PGN estándar ✅ COMPLETADO**
-- Trigger `trg_auto_build_pgn` escribe `games.pgn` automáticamente al terminar partida
-
-**C.3 — Avatar upload ✅ COMPLETADO**
-- Bucket `avatars` + RLS; upload en Settings con preview; Sidebar muestra avatar
-
-**C.4 — Notificaciones browser ✅ COMPLETADO**
-- Notification API nativa; se dispara cuando el oponente mueve y document.hidden = true
+**F.2 — Deploy a producción**
+- Variables de entorno configuradas en Vercel
+- Sentry DSN activo en producción
+- Dominio personalizado
 
 ---
 
 ### ÁREA D — Crecimiento (post primeros usuarios)
 
-**D.1 — Análisis post-partida ✅ COMPLETADO**
-- `/game/[id]/analysis`: tablero interactivo, barra eval visual, Lichess cloud-eval por posición, nav teclado
-
-**D.2 — Torneos básicos ✅ COMPLETADO**
-- DB completa: tournaments + participants + matches + RPCs; UI: lista, crear, bracket visual
-
 **D.3 — Token on-chain ($KING)**
-- Aún prematuro. Hacer cuando haya volumen off-chain real.
+- Prematuro hasta tener volumen off-chain real
 - ERC-20 o SPL + WalletConnect + bridge custodial↔on-chain
+- Activar cuando: >500 usuarios activos o >10k transacciones off-chain mensuales
 
 ---
 
 ## Orden de Ejecución Recomendado
 
 ```
-Esta semana (lanzamiento beta cerrado): ✅ COMPLETADO
-  [x] A.1 Timeout automático de matchmaking (pg_cron cada minuto)
-  [x] B.1 ELO matching ±200 en matchmaking (creator_elo column)
-  [x] B.2 Historial de movimientos en UI del juego (panel PGN)
-  [x] C.1 Sentry para error monitoring (@sentry/nextjs)
+Inmediato (bloqueador UX):
+  [ ] E.1 Motor Stockfish.js via Web Worker en /game/bot
 
-Siguiente semana (apertura pública): ✅ COMPLETADO
-  [x] A.2 Validación server-side de movimientos (Edge Function submit-move)
-  [x] A.3 Rate limiting en APIs (middleware in-memory)
-  [x] B.4 Search de jugadores (búsqueda por nombre/email)
-  [x] C.2 PGN estándar al terminar partidas (trigger SQL)
-  [x] C.3 Avatar upload (Supabase Storage + Settings UI)
+Antes de escalar:
+  [ ] F.1 Upstash Redis para rate limiting multi-instancia
+  [ ] F.2 Deploy a producción en Vercel
 
-Cuando haya usuarios reales: ✅ COMPLETADO (excepto D.3)
-  [x] B.3 Comeback King achievement (Lichess cloud-eval)
-  [x] C.4 Notificaciones browser
-  [x] D.1 Análisis post-partida (/game/[id]/analysis)
-  [x] D.2 Torneos básicos (single elimination + $KING prizes)
-  [ ] D.3 Token on-chain — PENDIENTE hasta tener volumen real
+Cuando haya volumen real:
+  [ ] D.3 Token on-chain ($KING)
 ```
 
 ---
@@ -188,7 +166,7 @@ Cuando haya usuarios reales: ✅ COMPLETADO (excepto D.3)
 
 - ❌ Contrato on-chain (costoso, prematuro sin usuarios)
 - ❌ Mobile app / PWA push notifications (la web funciona bien)
-- ❌ Análisis server-side con Stockfish (costoso en servidor)
+- ❌ Análisis server-side con Stockfish (costoso en servidor — el cliente es suficiente)
 - ❌ Chat en vivo entre jugadores
 - ❌ Sistema de amigos/seguidores
 - ❌ Pagos fiat (Stripe/Polar) → el modelo es tokens ganados jugando
@@ -197,13 +175,9 @@ Cuando haya usuarios reales: ✅ COMPLETADO (excepto D.3)
 
 ## Deuda Técnica
 
-- `search/page.tsx` → vacía, sin funcionalidad. Dejar para ÁREA B.4
-- `dashboard/page.tsx` → implementado ✅ (antes era placeholder)
-- `watch/page.tsx` → implementado con partidas reales ✅
-- `games.pgn` → campo existe en BD pero nunca se escribe (ÁREA C.2)
 - `games.moves` tipo `unknown[]` → mejorar tipado a `StoredMove[]`
-- `useWallet.ts` → hook redundante con usePlayerLevel para token_balance, considerar unificar
-- `Comeback King` achievement → único logro sin implementar
+- `useWallet.ts` redundante con `usePlayerLevel` para `token_balance` → considerar unificar
+- Rate limiting in-memory no escala con múltiples instancias Vercel (ver F.1)
 
 ---
 
@@ -212,12 +186,13 @@ Cuando haya usuarios reales: ✅ COMPLETADO (excepto D.3)
 ```
 BD (Supabase):
   profiles → id, email, full_name, elo, xp, level, token_balance,
-             win_streak, puzzle_count, last_daily_login
+             win_streak, puzzle_count, last_daily_login, avatar_url
   games    → id, player_white, player_black, game_type, bet_amount,
              time_control, status, moves, result, white_time_ms,
-             black_time_ms, last_move_at, fen_final, pgn
+             black_time_ms, last_move_at, fen_final, pgn, creator_elo
   transactions → user_id, type, amount, game_id, description
   achievements → user_id, achievement_key, xp_awarded, unlocked_at
+  tournaments / tournament_participants / tournament_matches
 
 RPCs:
   resolve_game(game_id, winner_id)  → ELO + XP + tokens + achievements
@@ -226,11 +201,17 @@ RPCs:
   award_xp(user_id, amount)          → suma XP + recalcula nivel
   grant_achievement(user_id, key, xp)→ INSERT achievements + award_xp (idempotente)
   flag_timeout(game_id)              → valida tiempo + resolve_game
+  join_tournament() / start_tournament() / advance_tournament()
+
+Edge Functions:
+  submit-move                        → validación server-side con chess.js
 
 Rutas activas:
   / (landing con stats reales)
   /play (Free vs Token, Level 10 lock)
   /game/[id] (tablero online + reloj real)
+  /game/bot (bot con motor custom — pendiente Stockfish)
+  /game/[id]/analysis (análisis post-partida)
   /puzzles (daily puzzle + XP)
   /puzzles/rush (Puzzle Rush 5 min)
   /learn (AI Tutor Gemini 2.5 Flash)
@@ -238,7 +219,9 @@ Rutas activas:
   /social (leaderboard + historial)
   /cash (balance $KING + historial)
   /dashboard (stats personales reales)
-  /settings (perfil + level + logros)
+  /settings (perfil + level + logros + avatar)
+  /tournaments / /tournaments/[id]
+  /search (búsqueda de jugadores)
   /login, /register, /forgot-password, /update-password
 ```
 
@@ -246,10 +229,11 @@ Rutas activas:
 
 ## Resumen Ejecutivo
 
-El producto tiene **loop de engagement completo**:
+El producto está **feature-complete para apertura pública**. Todas las áreas A-D están completadas.
+
+Loop de engagement funcional:
 > Registrarse → jugar gratis → ganar XP → subir niveles → desbloquear token betting → apostar $KING → ganar más tokens
 
-El stack técnico funciona en producción. Las próximas prioridades son **seguridad** (validación server-side de movimientos) y **calidad de experiencia** (ELO matching, historial de movimientos, error monitoring).
-
-**Bloqueador real para escalar: validación server-side de movimientos (A.2).**
-Sin esto, cualquier usuario puede manipular el resultado de una partida con tokens.
+**Único bloqueador UX antes del lanzamiento: E.1 (bot con Stockfish.js).**
+El juego contra el bot actualmente bloquea la UI en posiciones complejas por correr en el hilo principal.
+El resto está listo para producción.

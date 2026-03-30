@@ -21,6 +21,12 @@ export interface Wallet {
   updated_at: string
 }
 
+export interface PositionEval {
+  cp?: number       // centipawns from White's perspective
+  mate?: number     // positive = White mates, negative = Black mates
+  bestMove?: string // UCI format e.g. "e2e4" or "e7e8q"
+}
+
 export interface Game {
   id: string
   player_white: string | null
@@ -38,6 +44,15 @@ export interface Game {
   last_move_at: string | null
   created_at: string
   finished_at: string | null
+  // Analysis & anti-cheat (populated async after game finishes)
+  accuracy_white:      number | null
+  accuracy_black:      number | null
+  cheat_score_white:   number | null
+  cheat_score_black:   number | null
+  cheat_flagged_white: boolean
+  cheat_flagged_black: boolean
+  anti_cheat_checked:  boolean
+  move_evals:          PositionEval[] | null
 }
 
 export interface Transaction {

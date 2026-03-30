@@ -6,6 +6,7 @@ import { Chessboard } from "react-chessboard";
 import { Crown, Flag, Loader2, ArrowLeft, Clock, BookOpen, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { checkComebackKing } from "@/actions/achievements";
+import { analyzeGame } from "@/actions/analyzeGame";
 import { useOnlineGame } from "@/features/chess-engine/hooks/useOnlineGame";
 import { useGameClock } from "@/features/chess-engine/hooks/useGameClock";
 
@@ -57,6 +58,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         const res = await checkComebackKing(gameId);
         if (res.awarded) setComebackToast(true);
       });
+      // Fire-and-forget: accuracy + anti-cheat analysis (server-side, ~10s)
+      analyzeGame(gameId).catch(() => { /* silent — never blocks UX */ });
     }
   }, [status, result, gameId]);
 
