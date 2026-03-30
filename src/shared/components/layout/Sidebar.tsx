@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Play, Puzzle, GraduationCap, MonitorPlay, Users, Settings, Search, Crown, LogOut, LogIn, Coins, LayoutDashboard } from "lucide-react";
+import { Play, Puzzle, GraduationCap, MonitorPlay, Users, Settings, Search, Crown, LogOut, LogIn, Coins, LayoutDashboard, Trophy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlayerLevel } from "@/hooks/usePlayerLevel";
 import { signout } from "@/actions/auth";
@@ -14,6 +14,7 @@ const navItems = [
   { href: "/social", icon: <Users size={20} />, label: "Social" },
   { href: "/cash", icon: <Coins size={20} />, label: "$KING" },
   { href: "/dashboard", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
+  { href: "/tournaments", icon: <Trophy size={20} />, label: "Tournaments" },
 ];
 
 const bottomItems = [
@@ -74,10 +75,19 @@ export function Sidebar() {
             <div className="flex flex-col gap-2">
               {/* User info */}
               <div className="flex items-center gap-2 px-2 py-1.5">
-                <div className="w-7 h-7 rounded-lg bg-primary-chess/20 border border-primary-chess/30 flex items-center justify-center shrink-0">
-                  <span className="text-xs font-black text-primary-chess">
-                    {(profile?.full_name ?? user.email ?? "?")[0].toUpperCase()}
-                  </span>
+                <div className="w-7 h-7 rounded-lg bg-primary-chess/20 border border-primary-chess/30 flex items-center justify-center shrink-0 overflow-hidden">
+                  {(profile as unknown as { avatar_url?: string })?.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={(profile as unknown as { avatar_url: string }).avatar_url}
+                      alt="avatar"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-xs font-black text-primary-chess">
+                      {(profile?.full_name ?? user.email ?? "?")[0].toUpperCase()}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-gray-200 truncate leading-none">

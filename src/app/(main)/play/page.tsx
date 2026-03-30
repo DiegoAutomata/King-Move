@@ -1,28 +1,32 @@
 "use client";
 import { useState } from "react";
 import { ChessBoardGame } from "@/features/chess-engine/components/ChessBoardGame";
-import { Sword, Crown, Lock, Loader2, X, Zap, Star } from "lucide-react";
+import { Sword, Crown, Loader2, X, Zap, Star } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlayerLevel } from "@/hooks/usePlayerLevel";
 import { useMatchmaking } from "@/features/chess-engine/hooks/useMatchmaking";
 
 type PlayMode = "free" | "token";
 
-const TOKEN_BETS = [10, 25, 50, 100, 250];
 const TIME_CONTROLS = ["3 min", "10 min", "30 min"];
+
+const TOKEN_LEAGUES = [
+  { icon: "🥉", name: "Bronze",   bet: "1 – 5 $KING" },
+  { icon: "🥈", name: "Silver",   bet: "5 – 25 $KING" },
+  { icon: "🥇", name: "Gold",     bet: "25 – 100 $KING" },
+  { icon: "💎", name: "Platinum", bet: "100 – 500 $KING" },
+  { icon: "👑", name: "Diamond",  bet: "500+ $KING" },
+];
 
 export default function PlayPage() {
   const { user, profile } = useAuth();
   const { level, tokenBalance, xp, xpToNextLevel, progressPercent, canPlayToken } = usePlayerLevel();
 
   const [mode, setMode] = useState<PlayMode>("free");
-  const [selectedBet, setSelectedBet] = useState(10);
   const [selectedTime, setSelectedTime] = useState("10 min");
 
   const { status: matchStatus, error: matchError, startSearch, cancelSearch } = useMatchmaking();
   const isSearching = matchStatus === "searching";
-
-  const insufficientTokens = mode === "token" && tokenBalance < selectedBet;
 
   function handleFindOpponent() {
     if (!user || !profile) return;
@@ -30,17 +34,6 @@ export default function PlayPage() {
       gameType: "free",
       timeControl: selectedTime,
       betAmount: 0,
-      userElo: profile.elo,
-      userId: user.id,
-    });
-  }
-
-  function handlePlayToken() {
-    if (!user || !profile || insufficientTokens || !canPlayToken) return;
-    startSearch({
-      gameType: "token",
-      timeControl: selectedTime,
-      betAmount: selectedBet,
       userElo: profile.elo,
       userId: user.id,
     });
@@ -189,153 +182,47 @@ export default function PlayPage() {
           </div>
         )}
 
-        {/* TOKEN MODE */}
+        {/* TOKEN MODE — Coming Soon */}
         {mode === "token" && (
-          <div className="p-4 flex flex-col gap-4 flex-1">
+          <div className="p-4 flex flex-col items-center justify-center flex-1 gap-5 text-center">
+            {/* Icon */}
+            <div className="w-16 h-16 rounded-2xl bg-primary-chess/10 border border-primary-chess/20 flex items-center justify-center">
+              <Crown size={28} className="text-primary-chess" />
+            </div>
 
-            {/* Locked overlay if level < 10 */}
-            {!canPlayToken ? (
-              <div className="flex flex-col items-center justify-center flex-1 gap-4 text-center">
-                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center">
-                  <Lock size={28} className="text-gray-500" />
-                </div>
-                <div>
-                  <p className="text-white font-black text-lg">Token Play Locked</p>
-                  <p className="text-gray-500 text-sm mt-1">Reach Level 10 to unlock</p>
-                </div>
+            {/* Title */}
+            <div>
+              <p className="text-white font-black text-xl">Token Play</p>
+              <p className="text-primary-chess font-black text-sm mt-0.5 tracking-widest uppercase">Coming Soon</p>
+            </div>
 
-                {/* Progress to level 10 */}
-                <div className="w-full bg-bg-panel border border-white/10 rounded-xl p-4">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-xs text-gray-500 font-semibold">Your Progress</span>
-                    <span className="text-xs text-primary-chess font-bold">Lv.{level} / 10</span>
-                  </div>
-                  <div className="w-full bg-white/5 rounded-full h-2 mb-2">
-                    <div
-                      className="bg-gradient-to-r from-primary-chess to-yellow-400 h-2 rounded-full transition-all"
-                      style={{ width: `${Math.min(100, (level / 10) * 100)}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-gray-600">
-                    <span>{xp} XP total</span>
-                    <span>{Math.max(0, 1000 - xp)} XP needed</span>
-                  </div>
-                </div>
+            <p className="text-gray-500 text-sm leading-relaxed max-w-[190px]">
+              Bet $KING tokens on your games and win real rewards. Launching soon.
+            </p>
 
-                <div className="bg-primary-chess/10 border border-primary-chess/20 rounded-xl p-3 w-full">
-                  <p className="text-xs text-primary-chess font-semibold flex items-center gap-1.5">
-                    <Zap size={12} />
-                    Keep playing free games to earn XP and unlock token betting!
-                  </p>
-                </div>
+            {/* Leagues preview */}
+            <div className="w-full bg-bg-panel border border-white/5 rounded-xl p-4 text-left">
+              <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-widest mb-3">Leagues Preview</p>
+              <div className="flex flex-col gap-1.5">
+                {TOKEN_LEAGUES.map((league) => (
+                  <div key={league.name} className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-2 text-gray-400">
+                      <span>{league.icon}</span>
+                      <span className="font-semibold">{league.name}</span>
+                    </span>
+                    <span className="text-primary-chess font-bold">{league.bet}</span>
+                  </div>
+                ))}
               </div>
-            ) : (
-              <>
-                {/* Token balance */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500 font-semibold uppercase">Your Balance</span>
-                  <span className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 font-black text-sm px-3 py-1 rounded-full">
-                    ⬡ {tokenBalance.toFixed(0)} $KING
-                  </span>
-                </div>
+            </div>
 
-                {/* Time Control */}
-                <div>
-                  <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2 block">
-                    Time Control
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {TIME_CONTROLS.map((t) => (
-                      <button
-                        key={t}
-                        onClick={() => setSelectedTime(t)}
-                        className={`py-2 rounded-lg text-sm font-bold transition-all ${
-                          selectedTime === t
-                            ? "bg-primary-chess/20 text-primary-chess border border-primary-chess/30"
-                            : "bg-bg-panel text-gray-500 hover:text-gray-300 border border-white/5"
-                        }`}
-                      >
-                        {t}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Bet Selector */}
-                <div>
-                  <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-2 flex justify-between">
-                    <span>Bet Amount ($KING)</span>
-                    <span className="text-gray-600 normal-case font-normal">5% fee</span>
-                  </label>
-                  <div className="grid grid-cols-3 gap-2 flex-wrap">
-                    {TOKEN_BETS.map((bet) => (
-                      <button
-                        key={bet}
-                        onClick={() => setSelectedBet(bet)}
-                        disabled={tokenBalance < bet}
-                        className={`py-2 rounded-lg text-sm font-bold transition-all ${
-                          selectedBet === bet
-                            ? "bg-primary-chess text-black"
-                            : tokenBalance < bet
-                              ? "bg-bg-panel text-gray-700 border border-white/5 cursor-not-allowed"
-                              : "bg-bg-panel text-gray-400 hover:text-white border border-white/5"
-                        }`}
-                      >
-                        ⬡{bet}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-green-400 mt-2">
-                    To win: ⬡{(selectedBet * 2 * 0.95).toFixed(0)} $KING
-                  </p>
-                </div>
-
-                {/* XP rewards */}
-                <div className="bg-bg-panel border border-white/5 rounded-xl p-3 flex flex-col gap-1.5">
-                  <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">XP Rewards</p>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">Win</span>
-                    <span className="text-primary-chess font-bold">+50 XP</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-400">Draw</span>
-                    <span className="text-gray-300 font-bold">+10 XP</span>
-                  </div>
-                </div>
-
-                <div className="mt-auto">
-                  {isSearching ? (
-                    <div className="flex flex-col gap-2">
-                      <div className="w-full bg-primary-chess/10 border border-primary-chess/20 text-primary-chess font-bold text-sm py-4 rounded-xl flex items-center justify-center gap-2">
-                        <Loader2 size={16} className="animate-spin" />
-                        Searching for opponent...
-                      </div>
-                      <button
-                        onClick={cancelSearch}
-                        className="w-full flex items-center justify-center gap-1.5 text-gray-500 hover:text-gray-300 text-xs font-semibold py-2 transition-colors"
-                      >
-                        <X size={13} /> Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handlePlayToken}
-                      disabled={insufficientTokens || !user}
-                      className="w-full bg-primary-chess hover:bg-primary-hover text-black font-black text-lg py-4 rounded-xl transition-all hover:scale-[1.02] active:scale-95 shadow-gold flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    >
-                      <Crown size={20} />
-                      PLAY ⬡{selectedBet}
-                    </button>
-                  )}
-                  {insufficientTokens && !isSearching && (
-                    <p className="text-center text-xs text-red-400 font-semibold mt-2">
-                      Not enough $KING tokens.
-                    </p>
-                  )}
-                  {matchError && <p className="text-center text-xs text-red-400 mt-2">{matchError}</p>}
-                </div>
-              </>
-            )}
+            {/* XP tip */}
+            <div className="w-full bg-primary-chess/5 border border-primary-chess/10 rounded-xl p-3">
+              <p className="text-xs text-primary-chess/80 font-semibold flex items-center justify-center gap-1.5">
+                <Zap size={11} />
+                Keep playing free games to be ready when it launches
+              </p>
+            </div>
           </div>
         )}
       </div>

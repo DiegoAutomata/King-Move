@@ -42,6 +42,26 @@ interface UseOnlineGameReturn extends OnlineGameState {
   flagTimeout: () => Promise<void>
 }
 
+function requestNotificationPermission() {
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission()
+  }
+}
+
+function sendMoveNotification(opponentName: string) {
+  if (
+    typeof window === 'undefined' ||
+    !('Notification' in window) ||
+    Notification.permission !== 'granted' ||
+    !document.hidden
+  ) return
+  new Notification('King Move — Your Turn!', {
+    body: `${opponentName} made a move. It's your turn.`,
+    icon: '/king-move-logo.png',
+    tag: 'king-move-turn', // replace previous notification
+  })
+}
+
 export function useOnlineGame(gameId: string, userId: string): UseOnlineGameReturn {
   const [state, setState] = useState<OnlineGameState>({
     game: new Chess(),
@@ -154,6 +174,7 @@ export function useOnlineGame(gameId: string, userId: string): UseOnlineGameRetu
   }, [gameId, userId, applyMoves])
 
   useEffect(() => {
+    requestNotificationPermission()
     loadGame()
 
     const supabase = createClient()
@@ -164,21 +185,30 @@ export function useOnlineGame(gameId: string, userId: string): UseOnlineGameRetu
         { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
         (payload) => {
           const updated = payload.new as Game
-          const moves = (updated.moves ?? []) as StoredMove[]
-          const chess = applyMoves(moves)
+          const updatedMoves = (updated.moves ?? []) as StoredMove[]
+          const chess = applyMoves(updatedMoves)
           gameRef.current = chess
 
-          const lastMove = moves.length > 0
-            ? { from: moves[moves.length - 1].from, to: moves[moves.length - 1].to }
+          const lastMove = updatedMoves.length > 0
+            ? { from: updatedMoves[updatedMoves.length - 1].from, to: updatedMoves[updatedMoves.length - 1].to }
             : null
 
           setState(prev => {
             const currentTurn = chess.turn() === 'w' ? 'white' : 'black'
+            const isNowMyTurn = prev.myColor === currentTurn
+            // Notify if it just became my turn (opponent moved) and tab is hidden
+            if (isNowMyTurn && !prev.isMyTurn && updated.status === 'active') {
+              const opponentName = prev.myColor === 'white'
+                ? (prev.blackPlayer?.name?.split('@')[0] ?? 'Opponent')
+                : (prev.whitePlayer?.name?.split('@')[0] ?? 'Opponent')
+              sendMoveNotification(opponentName)
+            }
             return {
               ...prev,
               game: chess,
               fen: chess.fen(),
-              isMyTurn: prev.myColor === currentTurn,
+              moves: updatedMoves,
+              isMyTurn: isNowMyTurn,
               isWhiteTurn: currentTurn === 'white',
               status: updated.status,
               result: updated.result as GameResult,
@@ -198,9 +228,8 @@ export function useOnlineGame(gameId: string, userId: string): UseOnlineGameRetu
   const makeMove = useCallback(async (from: string, to: string, promotion?: string): Promise<boolean> => {
     if (!state.isMyTurn || state.status !== 'active') return false
 
-    const supabase = createClient()
+    // Optimistic UI update before server responds
     const chess = new Chess(gameRef.current.fen())
-
     let moveResult
     try {
       moveResult = chess.move({ from, to, promotion: promotion ?? 'q' })
@@ -219,77 +248,23 @@ export function useOnlineGame(gameId: string, userId: string): UseOnlineGameRetu
       lastMove: { from, to },
     }))
 
-    // Leer estado actual de la BD (movimientos + timer)
-    const { data: current } = await supabase
-      .from('games')
-      .select('moves, white_time_ms, black_time_ms, last_move_at')
-      .eq('id', gameId)
-      .single<{ moves: StoredMove[]; white_time_ms: number | null; black_time_ms: number | null; last_move_at: string | null }>()
+    // Call Edge Function for server-side validation
+    const supabase = createClient()
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { await loadGame(); return false }
 
-    const prevMoves = (current?.moves ?? []) as StoredMove[]
-    const newMove: StoredMove = { from, to, promotion, san: moveResult.san, fen: chess.fen() }
-    const updatedMoves = [...prevMoves, newMove]
+    const res = await supabase.functions.invoke('submit-move', {
+      body: { game_id: gameId, from, to, promotion },
+    })
 
-    // Calcular tiempo consumido por el jugador que acaba de mover
-    let newWhiteTime = current?.white_time_ms ?? null
-    let newBlackTime = current?.black_time_ms ?? null
-
-    if (current?.last_move_at && newWhiteTime !== null && newBlackTime !== null) {
-      const elapsed = Date.now() - new Date(current.last_move_at).getTime()
-      if (state.myColor === 'white') {
-        newWhiteTime = Math.max(0, newWhiteTime - elapsed)
-      } else {
-        newBlackTime = Math.max(0, newBlackTime - elapsed)
-      }
-    }
-
-    // Detectar fin de partida
-    let newStatus: Game['status'] = 'active'
-    let result: GameResult = null
-    let winnerId: string | null = null
-
-    if (newWhiteTime !== null && newWhiteTime <= 0) {
-      newStatus = 'finished'
-      result = 'black'
-      winnerId = playersRef.current.black
-    } else if (newBlackTime !== null && newBlackTime <= 0) {
-      newStatus = 'finished'
-      result = 'white'
-      winnerId = playersRef.current.white
-    } else if (chess.isGameOver()) {
-      newStatus = 'finished'
-      if (chess.isCheckmate()) {
-        result = chess.turn() === 'w' ? 'black' : 'white'
-        winnerId = result === 'white' ? playersRef.current.white : playersRef.current.black
-      } else {
-        result = 'draw'
-        winnerId = null
-      }
-    }
-
-    const { error: updateErr } = await supabase
-      .from('games')
-      .update({
-        moves: updatedMoves,
-        fen_final: chess.fen(),
-        ...(newWhiteTime !== null ? { white_time_ms: newWhiteTime } : {}),
-        ...(newBlackTime !== null ? { black_time_ms: newBlackTime } : {}),
-        last_move_at: new Date().toISOString(),
-        ...(newStatus === 'finished' ? { status: 'finished', result, finished_at: new Date().toISOString() } : {}),
-      })
-      .eq('id', gameId)
-
-    if (updateErr) {
+    if (res.error || !res.data?.success) {
+      // Rollback optimistic update on failure
       await loadGame()
       return false
     }
 
-    if (newStatus === 'finished') {
-      await resolveGame(winnerId)
-    }
-
     return true
-  }, [gameId, state.isMyTurn, state.status, state.myColor, loadGame, resolveGame])
+  }, [gameId, state.isMyTurn, state.status, loadGame])
 
   const resign = useCallback(async () => {
     if (!state.myColor || state.status !== 'active') return

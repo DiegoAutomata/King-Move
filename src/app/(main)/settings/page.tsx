@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
-import { Settings, User, Bell, ShieldCheck, Trophy, Palette, Loader2, Check, ChevronDown, ChevronUp, Star, Lock } from "lucide-react";
+import { useState, useTransition, useEffect, useRef } from "react";
+import { Settings, User, Bell, ShieldCheck, Trophy, Palette, Loader2, Check, ChevronDown, ChevronUp, Star, Lock, Camera } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePlayerLevel } from "@/hooks/usePlayerLevel";
 import { updateProfile } from "@/actions/auth";
@@ -46,9 +46,14 @@ export default function SettingsPage() {
           onToggle={() => toggle("profile")}
           icon={<User size={20} />}
           title="Profile"
-          description="Update your username and display name"
+          description="Update your username, display name, and avatar"
         >
-          <ProfileForm currentName={profile?.full_name ?? ""} email={profile?.email ?? ""} elo={profile?.elo ?? 1200} />
+          <ProfileForm
+            currentName={profile?.full_name ?? ""}
+            email={profile?.email ?? ""}
+            elo={profile?.elo ?? 1200}
+            avatarUrl={(profile as unknown as { avatar_url?: string })?.avatar_url ?? null}
+          />
         </Accordion>
 
         {/* Token & Level */}
@@ -88,11 +93,47 @@ export default function SettingsPage() {
 
 // ── Profile Form ─────────────────────────────────────────────────────────────
 
-function ProfileForm({ currentName, email, elo }: { currentName: string; email: string; elo: number }) {
+function ProfileForm({
+  currentName, email, elo, avatarUrl,
+}: {
+  currentName: string;
+  email: string;
+  elo: number;
+  avatarUrl: string | null;
+}) {
+  const { user } = useAuth();
   const [name, setName] = useState(currentName);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [avatar, setAvatar] = useState<string | null>(avatarUrl);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 2 * 1024 * 1024) { setError("Image must be under 2 MB"); return; }
+
+    setUploading(true);
+    setError("");
+    const supabase = createClient();
+    const ext = file.name.split(".").pop() ?? "jpg";
+    const path = `${user.id}/avatar.${ext}`;
+
+    const { error: uploadErr } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, contentType: file.type });
+
+    if (uploadErr) { setError("Upload failed. Try again."); setUploading(false); return; }
+
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const publicUrl = urlData.publicUrl + `?t=${Date.now()}`;
+
+    await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", user.id);
+    setAvatar(publicUrl);
+    setUploading(false);
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -108,8 +149,43 @@ function ProfileForm({ currentName, email, elo }: { currentName: string; email: 
     });
   }
 
+  const initials = (currentName || email).slice(0, 1).toUpperCase();
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
+      {/* Avatar */}
+      <div className="flex items-center gap-4">
+        <div className="relative shrink-0">
+          <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center">
+            {avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatar} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-2xl font-black text-gray-300">{initials}</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="absolute -bottom-1 -right-1 w-6 h-6 bg-primary-chess rounded-full flex items-center justify-center shadow-md hover:bg-primary-hover transition-colors disabled:opacity-50"
+          >
+            {uploading ? <Loader2 size={11} className="animate-spin text-black" /> : <Camera size={11} className="text-black" />}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={handleAvatarChange}
+          />
+        </div>
+        <div className="text-xs text-gray-500">
+          <p className="font-semibold text-gray-400 mb-0.5">Profile Photo</p>
+          <p>JPG, PNG or WebP · max 2 MB</p>
+        </div>
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1.5 block">Display Name</label>

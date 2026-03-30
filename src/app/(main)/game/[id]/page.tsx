@@ -1,10 +1,11 @@
 "use client";
 
-import { use, useCallback, useEffect, useRef, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Chessboard } from "react-chessboard";
-import { Crown, Flag, Loader2, ArrowLeft, Clock } from "lucide-react";
+import { Crown, Flag, Loader2, ArrowLeft, Clock, BookOpen, Sparkles } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { checkComebackKing } from "@/actions/achievements";
 import { useOnlineGame } from "@/features/chess-engine/hooks/useOnlineGame";
 import { useGameClock } from "@/features/chess-engine/hooks/useGameClock";
 
@@ -13,11 +14,16 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   const router = useRouter();
   const { user, profile } = useAuth();
   const containerRef = useRef<HTMLDivElement>(null);
+  const movesEndRef = useRef<HTMLDivElement>(null);
   const [boardWidth, setBoardWidth] = useState(400);
   const [showResignConfirm, setShowResignConfirm] = useState(false);
+  const [comebackToast, setComebackToast] = useState(false);
+  const [, startAchievementCheck] = useTransition();
+  const checkedComebackRef = useRef(false);
 
   const {
     fen,
+    moves,
     myColor,
     isMyTurn,
     isWhiteTurn,
@@ -37,6 +43,33 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     resign,
     flagTimeout,
   } = useOnlineGame(gameId, user?.id ?? "");
+
+  // Auto-scroll al último movimiento
+  useEffect(() => {
+    movesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [moves.length]);
+
+  // Comeback King check cuando la partida termina con victoria
+  useEffect(() => {
+    if (status === "finished" && result && result !== "draw" && !checkedComebackRef.current) {
+      checkedComebackRef.current = true;
+      startAchievementCheck(async () => {
+        const res = await checkComebackKing(gameId);
+        if (res.awarded) setComebackToast(true);
+      });
+    }
+  }, [status, result, gameId]);
+
+  // Agrupar moves en pares (blancas + negras) para mostrar como 1. e4 e5
+  const movePairs = moves.reduce<{ white: string; black?: string; num: number }[]>((acc, move, i) => {
+    if (i % 2 === 0) {
+      acc.push({ num: Math.floor(i / 2) + 1, white: move.san });
+    } else {
+      acc[acc.length - 1].black = move.san;
+    }
+    return acc;
+  }, []);
+  const lastMoveIdx = moves.length - 1;
 
   // Callback estable para timeout
   const handleTimeout = useCallback(async (_loser: "white" | "black") => {
@@ -187,6 +220,14 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
               customSquareStyles,
             })}
 
+            {/* Comeback King toast */}
+            {comebackToast && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-yellow-900/90 border border-yellow-500/40 text-yellow-300 font-bold px-5 py-3 rounded-xl flex items-center gap-2 shadow-lg animate-bounce">
+                <Sparkles size={16} className="text-yellow-400" />
+                👑 Comeback King unlocked! +100 XP
+              </div>
+            )}
+
             {/* Result overlay */}
             {status === "finished" && (
               <div className="absolute inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-10 rounded">
@@ -200,7 +241,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                   {gameType === "token" && betAmount > 0 && result !== myColor && result !== "draw" && (
                     <p className="text-red-400 font-bold">-⬡{betAmount.toFixed(0)} $KING</p>
                   )}
-                  <div className="flex gap-3 mt-2">
+                  <div className="flex gap-3 mt-2 flex-wrap justify-center">
                     <button
                       onClick={() => router.push("/play")}
                       className="bg-primary-chess hover:bg-primary-hover text-black px-8 py-3 rounded-xl font-black transition-all hover:scale-105"
@@ -208,10 +249,16 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                       Play Again
                     </button>
                     <button
-                      onClick={() => router.push("/social")}
-                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-6 py-3 rounded-xl font-bold transition-all text-sm"
+                      onClick={() => router.push(`/game/${gameId}/analysis`)}
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-5 py-3 rounded-xl font-bold transition-all text-sm flex items-center gap-2"
                     >
-                      View History
+                      <BookOpen size={14} /> Analyze
+                    </button>
+                    <button
+                      onClick={() => router.push("/social")}
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 px-5 py-3 rounded-xl font-bold transition-all text-sm"
+                    >
+                      History
                     </button>
                   </div>
                 </div>
@@ -314,6 +361,39 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             </div>
           </div>
         )}
+
+        {/* Move history */}
+        <div className="bg-bg-panel border border-white/5 rounded-xl p-3 flex flex-col gap-2 flex-1 min-h-0">
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider flex items-center gap-1.5 shrink-0">
+            <BookOpen size={11} /> Moves {moves.length > 0 && <span className="text-gray-600">({moves.length})</span>}
+          </p>
+          {movePairs.length === 0 ? (
+            <p className="text-xs text-gray-600 italic">No moves yet</p>
+          ) : (
+            <div className="overflow-y-auto flex-1 min-h-0 max-h-48 scrollbar-none">
+              <div className="space-y-0.5">
+                {movePairs.map((pair) => {
+                  const whiteIdx = (pair.num - 1) * 2;
+                  const blackIdx = whiteIdx + 1;
+                  return (
+                    <div key={pair.num} className="flex gap-1 text-xs font-mono">
+                      <span className="text-gray-600 w-6 shrink-0">{pair.num}.</span>
+                      <span className={`w-12 font-semibold ${whiteIdx === lastMoveIdx ? "text-primary-chess" : "text-gray-300"}`}>
+                        {pair.white}
+                      </span>
+                      {pair.black && (
+                        <span className={`w-12 ${blackIdx === lastMoveIdx ? "text-primary-chess font-semibold" : "text-gray-400"}`}>
+                          {pair.black}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+                <div ref={movesEndRef} />
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Resign */}
         {status === "active" && (
