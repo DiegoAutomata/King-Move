@@ -1,8 +1,9 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Play, Puzzle, GraduationCap, MonitorPlay, Users, Settings, Search, Crown, LogOut, LogIn } from "lucide-react";
+import { Play, Puzzle, GraduationCap, MonitorPlay, Users, Settings, Search, Crown, LogOut, LogIn, Coins, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePlayerLevel } from "@/hooks/usePlayerLevel";
 import { signout } from "@/actions/auth";
 
 const navItems = [
@@ -11,6 +12,8 @@ const navItems = [
   { href: "/learn", icon: <GraduationCap size={20} />, label: "Learn" },
   { href: "/watch", icon: <MonitorPlay size={20} />, label: "Watch" },
   { href: "/social", icon: <Users size={20} />, label: "Social" },
+  { href: "/cash", icon: <Coins size={20} />, label: "$KING" },
+  { href: "/dashboard", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
 ];
 
 const bottomItems = [
@@ -21,6 +24,7 @@ const bottomItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const { user, profile, loading } = useAuth();
+  const { level, tokenBalance, progressPercent } = usePlayerLevel();
 
   return (
     <div className="w-16 md:w-64 h-screen bg-bg-sidebar flex flex-col border-r border-white/5 fixed left-0 top-0 z-50">
@@ -80,7 +84,17 @@ export function Sidebar() {
                     {profile?.full_name ?? user.email?.split("@")[0]}
                   </span>
                   <span className="text-[10px] text-primary-chess font-semibold">
-                    {profile?.elo ?? 1200} ELO
+                    {profile?.elo ?? 1200} ELO · Lv.{level}
+                  </span>
+                  {/* XP progress bar */}
+                  <div className="w-full bg-white/5 rounded-full h-1 mt-0.5">
+                    <div
+                      className="bg-primary-chess h-1 rounded-full transition-all"
+                      style={{ width: `${progressPercent}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-yellow-400 font-semibold">
+                    ⬡ {tokenBalance.toFixed(0)} $KING
                   </span>
                 </div>
               </div>

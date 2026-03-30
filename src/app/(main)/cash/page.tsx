@@ -1,190 +1,178 @@
-import Link from 'next/link';
-import { DollarSign, ShieldCheck, Trophy, ArrowUpRight, Zap, Users, Play } from 'lucide-react';
+"use client";
 
-export default function CashGames() {
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Zap, Trophy, TrendingUp, ArrowRight, Lock, Star } from "lucide-react";
+import { usePlayerLevel } from "@/hooks/usePlayerLevel";
+import { useAuth } from "@/hooks/useAuth";
+import { createClient } from "@/lib/supabase/client";
+
+interface Transaction {
+  id: string;
+  type: string;
+  amount: number;
+  description: string | null;
+  created_at: string;
+}
+
+export default function TokenPage() {
+  const { user } = useAuth();
+  const { level, xp, tokenBalance, xpToNextLevel, progressPercent, canPlayToken } = usePlayerLevel();
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const supabase = createClient();
+    supabase
+      .from("transactions")
+      .select("id, type, amount, description, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }) => { if (data) setTransactions(data); });
+  }, [user]);
+
+  const totalEarned = transactions.filter((t) => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const totalGames = transactions.filter((t) => t.type === "win").length;
+
   return (
-    <div className="max-w-5xl mx-auto py-8">
+    <div className="max-w-4xl mx-auto p-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 mb-12 border-b border-bg-hover/50 pb-8">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-yellow-600 mb-2 flex items-center gap-3">
-            <DollarSign className="w-10 h-10 text-yellow-500" />
-            Cash Games
-          </h1>
-          <p className="text-gray-400 font-medium text-lg">
-            Monetiza tu habilidad. Partidas justas, pagos instantáneos.
-          </p>
+      <div className="mb-8">
+        <h1 className="text-4xl font-black text-white flex items-center gap-3 mb-1">
+          <span className="text-3xl">⬡</span>
+          $KING Token
+        </h1>
+        <p className="text-gray-400 text-sm">The in-game currency of King Move. Earn by playing, spend by betting.</p>
+      </div>
+
+      {/* Balance card + level */}
+      <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="bg-bg-panel border border-yellow-500/20 rounded-2xl p-6">
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider mb-1">Your Balance</p>
+          <p className="text-5xl font-black text-yellow-400 mb-1">⬡ {tokenBalance.toFixed(0)}</p>
+          <p className="text-xs text-gray-600">$KING tokens</p>
         </div>
-        
-        <div className="bg-bg-panel border border-yellow-500/20 rounded-2xl p-4 flex items-center gap-6 min-w-[280px]">
-          <div>
-            <p className="text-gray-400 text-sm font-semibold mb-1">Mi Balance (USD)</p>
-            <p className="text-3xl font-black text-white">$145.50</p>
+
+        <div className="bg-bg-panel border border-primary-chess/20 rounded-2xl p-6 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-gray-500 font-semibold uppercase">Level</p>
+              <p className="text-4xl font-black text-white">{level}</p>
+            </div>
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${canPlayToken ? "bg-primary-chess/20 border border-primary-chess/30" : "bg-white/5 border border-white/10"}`}>
+              {canPlayToken ? <Star size={20} className="text-primary-chess" /> : <Lock size={20} className="text-gray-500" />}
+            </div>
           </div>
-          <div className="flex-1 flex flex-col gap-2">
-            <button className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-2 px-4 rounded-lg w-full transition-colors flex justify-center items-center gap-1 shadow-[0_4px_0_0_#9c7717] active:translate-y-[4px] active:shadow-none">
-               Depositar <ArrowUpRight className="w-4 h-4"/>
-            </button>
+          <div>
+            <div className="flex justify-between text-[10px] text-gray-600 mb-1">
+              <span>{xp} XP</span>
+              <span>{xpToNextLevel} to Lv.{level + 1}</span>
+            </div>
+            <div className="w-full bg-white/5 rounded-full h-1.5">
+              <div className="bg-primary-chess h-1.5 rounded-full" style={{ width: `${progressPercent}%` }} />
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        
-        {/* Main Content: Lobbies and Games */}
-        <div className="flex-1 space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <LobbyCard 
-                    title="Partida Rápida" 
-                    time="10 min" 
-                    bet="$5.00" 
-                    players={24}
-                    color="green"
-                />
-                <LobbyCard 
-                    title="Blitz" 
-                    time="3 min + 2s" 
-                    bet="$10.00" 
-                    players={86}
-                    color="yellow"
-                />
-                <LobbyCard 
-                    title="Bala (Bullet)" 
-                    time="1 min" 
-                    bet="$2.00" 
-                    players={134}
-                    color="red"
-                />
-                <LobbyCard 
-                    title="High Roller" 
-                    time="15 min" 
-                    bet="$100.00" 
-                    players={4}
-                    color="purple"
-                    isVip
-                />
-            </div>
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3 mb-8">
+        <StatCard icon={<TrendingUp size={18} className="text-green-400" />} label="Total Earned" value={`⬡ ${totalEarned.toFixed(0)}`} />
+        <StatCard icon={<Trophy size={18} className="text-yellow-400" />} label="Games Won" value={String(totalGames)} />
+        <StatCard icon={<Zap size={18} className="text-primary-chess" />} label="Total XP" value={`${xp} XP`} />
+      </div>
 
-            <div className="bg-bg-panel rounded-2xl overflow-hidden border border-bg-hover">
-                <div className="p-4 bg-[#282622] border-b border-bg-hover flex justify-between items-center">
-                    <h3 className="font-bold text-lg text-white">Retos Abiertos</h3>
-                    <button className="text-sm font-bold text-yellow-500 hover:text-yellow-400">Ver Todos</button>
+      {/* How to earn */}
+      <div className="bg-bg-panel border border-white/5 rounded-2xl p-6 mb-8">
+        <h2 className="font-black text-white text-lg mb-4">How to earn $KING</h2>
+        <div className="grid grid-cols-2 gap-3">
+          {[
+            { label: "Win a free game", xp: "+20 XP", token: "", icon: "⚔️" },
+            { label: "Win a token game", xp: "+50 XP", token: "+ tokens", icon: "🏆" },
+            { label: "Draw", xp: "+10 XP", token: "", icon: "🤝" },
+            { label: "Solve a puzzle", xp: "+5 XP", token: "", icon: "🧩" },
+            { label: "Unlock achievements", xp: "variable XP", token: "", icon: "🎖️" },
+            { label: "Level 10 → bet tokens", xp: "", token: "win opponent's tokens", icon: "💎" },
+          ].map((item) => (
+            <div key={item.label} className="flex items-start gap-3 bg-bg-chess border border-white/5 rounded-xl p-3">
+              <span className="text-xl">{item.icon}</span>
+              <div>
+                <p className="text-sm font-semibold text-gray-200">{item.label}</p>
+                <div className="flex gap-2 mt-0.5">
+                  {item.xp && <span className="text-[10px] text-primary-chess font-bold">{item.xp}</span>}
+                  {item.token && <span className="text-[10px] text-yellow-400 font-bold">{item.token}</span>}
                 </div>
-                <div className="divide-y divide-bg-hover">
-                    {[1,2,3,4].map((i) => (
-                        <div key={i} className="p-4 hover:bg-bg-hover/50 transition-colors flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-gray-600 rounded-sm"></div>
-                                <div>
-                                    <p className="font-bold text-white flex items-center gap-2">
-                                        MagnusHustler 
-                                        <span className="text-xs bg-bg-hover px-2 py-0.5 rounded text-gray-400">Elo 1850</span>
-                                    </p>
-                                    <p className="text-sm text-gray-400 mt-0.5 px-1">Blitz 5 min</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-6">
-                                <div className="text-right">
-                                    <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider mb-1">Apuesta</p>
-                                    <p className="font-black text-xl text-yellow-500">${(i*5).toFixed(2)}</p>
-                                </div>
-                                <button className="bg-white hover:bg-gray-200 text-black font-bold py-2 px-6 rounded-lg transition-colors shadow-[0_4px_0_0_#9ca3af] active:translate-y-[4px] active:shadow-none">
-                                    Aceptar
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
+              </div>
             </div>
+          ))}
         </div>
+      </div>
 
-        {/* Right Sidebar: Trust & Stats */}
-        <div className="w-full lg:w-80 flex flex-col gap-4">
-            <button className="w-full bg-primary-chess hover:bg-primary-hover shadow-[0_6px_0_0_#4c7b28] text-white p-4 rounded-xl font-extrabold text-xl transition-all active:translate-y-[6px] active:shadow-none mb-4">
-                Crear Reto Personalizado
-            </button>
+      {/* CTA */}
+      <div className="flex gap-3 mb-8">
+        <Link
+          href="/play"
+          className="flex-1 bg-primary-chess hover:bg-primary-hover text-black font-black py-3.5 rounded-xl text-center flex items-center justify-center gap-2 transition-all hover:scale-[1.02]"
+        >
+          Play & Earn XP <ArrowRight size={18} />
+        </Link>
+        <Link
+          href="/puzzles"
+          className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-3.5 rounded-xl text-center flex items-center justify-center gap-2 transition-all"
+        >
+          Solve Puzzles <ArrowRight size={18} />
+        </Link>
+      </div>
 
-            <div className="bg-bg-panel rounded-2xl p-5 border border-bg-hover space-y-4">
-                <div className="flex items-center gap-3 text-white mb-2">
-                    <ShieldCheck className="text-green-500 w-6 h-6" />
-                    <h3 className="font-bold text-lg">Safe Play System</h3>
+      {/* Transaction history */}
+      <div>
+        <h2 className="font-black text-white text-lg mb-4">Token History</h2>
+        {transactions.length === 0 ? (
+          <div className="text-center py-10 text-gray-500">
+            <p className="text-4xl mb-3">⬡</p>
+            <p className="font-semibold">No transactions yet.</p>
+            <p className="text-sm mt-1">Play games to start earning $KING!</p>
+          </div>
+        ) : (
+          <div className="bg-bg-panel border border-white/5 rounded-2xl overflow-hidden">
+            {transactions.map((tx) => {
+              const positive = tx.amount > 0;
+              return (
+                <div key={tx.id} className="flex items-center justify-between px-5 py-4 border-b border-white/5 last:border-0 hover:bg-white/2 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm ${positive ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                      {tx.type === "win" ? "🏆" : tx.type === "demo" ? "🎁" : tx.type === "bet" ? "⚔️" : "⬡"}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-200 capitalize">{tx.type.replace("_", " ")}</p>
+                      {tx.description && <p className="text-[10px] text-gray-600">{tx.description}</p>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`text-sm font-black ${positive ? "text-green-400" : "text-red-400"}`}>
+                      {positive ? "+" : ""}⬡{Math.abs(tx.amount).toFixed(0)}
+                    </span>
+                    <p className="text-[10px] text-gray-600">{new Date(tx.created_at).toLocaleDateString()}</p>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-400 font-medium">
-                    Aseguramos la integridad de cada partida Monetaria usando el mismo motor anti-trampas de nivel torneo que bloquea el uso de módulos o IA.
-                </p>
-                <div className="pt-2 border-t border-bg-hover text-xs text-gray-500 font-bold flex gap-2">
-                    <Zap className="w-4 h-4 text-gray-400" /> Fondos resguardados en custodia (Escrow).
-                </div>
-            </div>
-
-            <div className="bg-bg-panel rounded-2xl p-5 border border-bg-hover">
-                 <h3 className="font-bold text-lg text-white mb-4 flex items-center gap-2">
-                    <Trophy className="text-yellow-500 w-5 h-5"/>
-                    Top Ganadores (Hoy)
-                 </h3>
-                 <div className="space-y-3">
-                    <WinnerRow rank={1} name="ChessShark99" amount="+$450.00" />
-                    <WinnerRow rank={2} name="QueenSlayer" amount="+$320.50" />
-                    <WinnerRow rank={3} name="PawnHubCEO" amount="+$210.00" />
-                 </div>
-            </div>
-        </div>
-
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
-  )
+  );
 }
 
-function LobbyCard({ title, time, bet, players, color, isVip }: { title: string, time: string, bet: string, players: number, color: string, isVip?: boolean }) {
-    
-    // Simplificando los colores para tailwind v4 / clases puras
-    const bgColors: any = {
-        green: 'bg-[#3e5229]',
-        yellow: 'bg-[#5c4a16]',
-        red: 'bg-[#5c2316]',
-        purple: 'bg-[#3b165c]'
-    };
-
-    return (
-        <div className={`p-5 rounded-2xl ${bgColors[color]} border border-white/5 relative overflow-hidden group cursor-pointer hover:-translate-y-1 transition-transform`}>
-            {isVip && (
-                <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[10px] font-black uppercase px-3 py-1 rounded-bl-lg">
-                    VIP
-                </div>
-            )}
-            <div className="flex justify-between items-start mb-4">
-                <div>
-                    <h3 className="text-white font-extrabold text-xl">{title}</h3>
-                    <p className="text-gray-300/80 font-bold text-sm flex items-center gap-1 mt-1">
-                        <Zap className="w-3 h-3" /> {time}
-                    </p>
-                </div>
-                <div className="text-right">
-                    <p className="text-xs text-white/60 font-bold uppercase tracking-wide">Buy-in</p>
-                    <p className="text-2xl font-black text-white">{bet}</p>
-                </div>
-            </div>
-            
-            <div className="flex items-center justify-between mt-6">
-                <span className="text-xs font-semibold text-white/50 flex items-center gap-1">
-                    <Users className="w-3 h-3" /> {players} online
-                </span>
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white text-white group-hover:text-black transition-colors">
-                    <Play className="w-4 h-4 fill-current ml-0.5" />
-                </div>
-            </div>
-        </div>
-    )
-}
-
-function WinnerRow({ rank, name, amount }: { rank: number, name: string, amount: string }) {
-    return (
-        <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-3">
-                <span className={`font-black ${rank === 1 ? 'text-yellow-500' : 'text-gray-500'}`}>#{rank}</span>
-                <span className="font-bold text-gray-200">{name}</span>
-            </div>
-            <span className="font-bold text-green-400">{amount}</span>
-        </div>
-    )
+function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="bg-bg-panel border border-white/5 rounded-xl p-4 flex flex-col gap-2">
+      <div className="flex items-center gap-2 text-gray-500">
+        {icon}
+        <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
+      </div>
+      <p className="text-xl font-black text-white">{value}</p>
+    </div>
+  );
 }

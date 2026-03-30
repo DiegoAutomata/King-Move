@@ -1,312 +1,264 @@
 # Plan de Acción — King Move
+> Última actualización: 2026-03-30
 > Presupuesto escaso. Prioridad: funcionalidad core sobre cosmética.
-> Todo lo que está en "Completado" ya funciona y no tocar.
 
 ---
 
-## Estado Actual (Inventario Real)
+## Changelog
 
-### ✅ Completado
-- Landing page (`/`) con hero, ligas, features
-- Layout con Sidebar responsive
-- Auth real: login, register, Google OAuth, reset password
-- Tabla `profiles` en Supabase con ELO (default 1200)
-- Tablero de ajedrez local funcional (chess.js + react-chessboard)
-- AI Tutor (`/learn`) con streaming real via OpenRouter / Gemini 2.5 Flash
-- UI shells de `/puzzles`, `/watch`, `/social`, `/cash`, `/settings` (datos mock)
-- Sidebar muestra usuario logueado con ELO real
+### 2026-03-29 — Sesión 1
+**Completado:**
+- ✅ Base de datos: tablas `wallets`, `games`, `transactions` + función `resolve_game()` + demo credits
+- ✅ Hook `useWallet` con Supabase Realtime (balance en vivo)
+- ✅ Matchmaking con Supabase Realtime (`useMatchmaking`)
+- ✅ Partidas online en tiempo real (`useOnlineGame`) + página `/game/[id]`
+- ✅ Botones "Find Opponent" y "PLAY $X" funcionales
+- ✅ Leaderboard real en `/social` (datos de Supabase)
+- ✅ Historial de partidas en `/social`
+- ✅ Settings funcional: editar perfil + historial de transacciones
+- ✅ ELO real en `/puzzles`
+- ✅ Puzzles interactivos con Lichess API (puzzle del día, tablero con validación de movimientos)
 
-### ❌ Sin funcionalidad real
-- Botón "Find Opponent" y "PLAY $X" → no hacen nada
-- Wallet → mock ($50 hardcodeado)
-- Matchmaking → no existe
-- ELO no se actualiza al ganar/perder
-- Partidas no se guardan
-- Leaderboard, puzzles, torneos → todos datos falsos
+### 2026-03-30 — Sesión 2: Sistema XP + Token $KING
+**Completado:**
+- ✅ BD: columnas `xp`, `level`, `token_balance`, `win_streak` en `profiles`
+- ✅ BD: tabla `achievements` con RLS
+- ✅ BD: funciones `award_xp()`, `puzzle_solved()`, `claim_daily_login_bonus()`, `grant_achievement()`
+- ✅ BD: `resolve_game(game_id, winner_id)` reescrito con XP + win_streak + achievements
+- ✅ Hook `usePlayerLevel` con Realtime (xp, level, tokenBalance, canPlayToken)
+- ✅ Sidebar: nivel, barra XP, balance $KING en tiempo real
+- ✅ Server actions: `awardPuzzleXp()` + `claimDailyLoginBonus()`
+- ✅ Puzzle `onSolved` → +5 XP + toast + logro "Puzzle Addict" si llega a 10
+- ✅ `DailyLoginBonus` component: +10 XP automático al entrar por primera vez en el día
+- ✅ Logros activos: First Blood, ELO Climber, Streak Master, Diamond Hands, Puzzle Addict
+- ✅ Página `/play` rediseñada: Free vs Token Play, Level 10 lock, XP rewards info
+- ✅ Página `/cash` con balance $KING, historial, cómo ganar tokens
+- ✅ Tipos `database.ts` actualizados con todos los campos nuevos
 
----
-
-## Áreas de Trabajo
-
----
-
-### ÁREA 1 — Base de Datos (Supabase)
-> Prerequisito para todo lo demás. Sin esto nada funciona.
-
-**Paso 1.1 — Tabla `wallets`**
-```sql
-create table public.wallets (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references public.profiles(id) on delete cascade unique not null,
-  balance numeric(10,2) default 0 not null,
-  updated_at timestamptz default now()
-);
-alter table public.wallets enable row level security;
--- Solo el dueño ve su wallet
-create policy "Owner only" on public.wallets
-  for all using (auth.uid() = user_id);
--- Trigger: crear wallet automáticamente cuando se crea perfil
-create or replace function public.handle_new_profile()
-returns trigger as $$
-begin
-  insert into public.wallets (user_id) values (new.id);
-  return new;
-end;
-$$ language plpgsql security definer;
-create trigger on_profile_created
-  after insert on public.profiles
-  for each row execute procedure public.handle_new_profile();
-```
-
-**Paso 1.2 — Tabla `games`**
-```sql
-create table public.games (
-  id uuid primary key default gen_random_uuid(),
-  player_white uuid references public.profiles(id),
-  player_black uuid references public.profiles(id),
-  fen_final text,
-  pgn text,
-  result text check (result in ('white', 'black', 'draw')),
-  game_type text default 'free' check (game_type in ('free', 'cash')),
-  bet_amount numeric(10,2) default 0,
-  time_control text default '10+0',
-  status text default 'waiting' check (status in ('waiting', 'active', 'finished', 'aborted')),
-  moves jsonb default '[]',
-  created_at timestamptz default now(),
-  finished_at timestamptz
-);
-alter table public.games enable row level security;
-create policy "Players can view their games"
-  on public.games for select
-  using (auth.uid() = player_white or auth.uid() = player_black);
-create policy "Anyone can view finished games"
-  on public.games for select
-  using (status = 'finished');
-```
-
-**Paso 1.3 — Tabla `transactions`**
-```sql
-create table public.transactions (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references public.profiles(id) not null,
-  type text check (type in ('deposit', 'withdrawal', 'bet_win', 'bet_loss', 'fee')),
-  amount numeric(10,2) not null,
-  game_id uuid references public.games(id),
-  description text,
-  created_at timestamptz default now()
-);
-alter table public.transactions enable row level security;
-create policy "Owner only" on public.transactions
-  for all using (auth.uid() = user_id);
-```
-
-**Paso 1.4 — Función para resolver partida (ELO + wallet)**
-```sql
--- Función que se llama al terminar una partida: actualiza ELO y wallet
-create or replace function public.resolve_game(
-  p_game_id uuid,
-  p_result text -- 'white', 'black', 'draw'
-) returns void as $$
-declare
-  v_white_elo int;
-  v_black_elo int;
-  v_white_id uuid;
-  v_black_id uuid;
-  v_bet numeric;
-  v_elo_change int;
-  v_expected float;
-begin
-  select player_white, player_black, bet_amount
-  into v_white_id, v_black_id, v_bet
-  from public.games where id = p_game_id;
-
-  select elo into v_white_elo from public.profiles where id = v_white_id;
-  select elo into v_black_elo from public.profiles where id = v_black_id;
-
-  -- ELO simple K=32
-  v_expected := 1.0 / (1.0 + power(10.0, (v_black_elo - v_white_elo) / 400.0));
-
-  if p_result = 'white' then
-    v_elo_change := round(32 * (1 - v_expected));
-    update public.profiles set elo = elo + v_elo_change where id = v_white_id;
-    update public.profiles set elo = elo - v_elo_change where id = v_black_id;
-    -- Wallet: ganador cobra, perdedor pierde (5% fee)
-    if v_bet > 0 then
-      update public.wallets set balance = balance + (v_bet * 1.95) where user_id = v_white_id;
-      update public.wallets set balance = balance - v_bet where user_id = v_black_id;
-    end if;
-  elsif p_result = 'black' then
-    v_elo_change := round(32 * v_expected);
-    update public.profiles set elo = elo - v_elo_change where id = v_white_id;
-    update public.profiles set elo = elo + v_elo_change where id = v_black_id;
-    if v_bet > 0 then
-      update public.wallets set balance = balance - v_bet where user_id = v_white_id;
-      update public.wallets set balance = balance + (v_bet * 1.95) where user_id = v_black_id;
-    end if;
-  end if;
-
-  update public.games
-  set status = 'finished', result = p_result, finished_at = now()
-  where id = p_game_id;
-end;
-$$ language plpgsql security definer;
-```
+### 2026-03-30 — Sesión 3: Producción — Fase 1 y 2
+**Completado:**
+- ✅ **Reloj de tiempo real en `/game/[id]`**: columnas `white_time_ms`, `black_time_ms`, `last_move_at`; trigger DB inicializa timers al activarse la partida; `useGameClock` hook client-side con countdown MM:SS; deducción de tiempo en cada movimiento; rojo pulsante <30s; RPC `flag_timeout` server-side
+- ✅ **Forgot Password**: página `/forgot-password` + `ForgotPasswordForm` con confirmación de envío
+- ✅ **Reset Password**: página `/update-password` + `UpdatePasswordForm` con toggle visibilidad + validación de coincidencia
+- ✅ **Dashboard real** (`/dashboard`): stats reales (W/D/L, win rate, puzzles, logros), barra XP, partidas recientes, quick actions — agregado al Sidebar
+- ✅ **Watch page real** (`/watch`): partidas `active` en tiempo real vía Realtime, vacío elegante, botón Spectate
+- ✅ **Puzzle Rush** (`/puzzles/rush`): timer 5 min, puzzles en cadena vía Lichess `/api/puzzle/next`, pre-fetch background, XP por solve, pantalla final con rating
+- ✅ **Números reales en landing**: Players, Games Played, Puzzles Solved desde BD (muestra "—" si es 0)
+- ✅ **AI Tutor verificado**: OPENROUTER_API_KEY presente, `/api/chat` usa Gemini 2.5 Flash correctamente
+- ✅ `.env.local.example` documentado con todas las keys necesarias
 
 ---
 
-### ÁREA 2 — Partidas Reales (Core MVP)
-> El corazón del producto. Sin esto la app no tiene valor.
-> Usar **Supabase Realtime** (ya incluido, sin costo extra).
+## Estado Actual — Inventario Real
 
-**Paso 2.1 — Hook `useMatchmaking`**
-- Crear `src/features/chess-engine/hooks/useMatchmaking.ts`
-- Al hacer click en "Find Opponent": insertar fila en `games` con `status='waiting'`
-- Suscribirse a Realtime en `games` donde `status='waiting'` y ELO cercano (±200)
-- Cuando llega un oponente: actualizar `status='active'`, redirigir a `/game/[id]`
+### ✅ Completado y funcionando
+- Landing page con stats reales
+- Layout con Sidebar responsive (nivel, XP, $KING, Dashboard)
+- Auth completa: login, register, Google OAuth, reset password (todos los flows)
+- Sistema XP + niveles (1–20), daily login bonus, progression bar
+- Tabla `profiles` con ELO, xp, level, token_balance, win_streak, puzzle_count
+- Tabla `achievements` con 5 logros activos (falta Comeback King)
+- Matchmaking real con Supabase Realtime
+- Partidas online en `/game/[id]` con **reloj real** (MM:SS)
+- Wallet $KING token (custodial off-chain)
+- Leaderboard y historial en `/social`
+- Settings: perfil, level/XP, logros (accordion)
+- Puzzles interactivos con Lichess API + XP al resolver
+- **Puzzle Rush** en `/puzzles/rush` (5 min, puzzles en cadena)
+- Watch page con partidas activas reales
+- Dashboard con stats reales del jugador
+- AI Tutor en `/learn` (Gemini 2.5 Flash via OpenRouter)
 
-**Paso 2.2 — Página `/game/[id]`**
-- Crear `src/app/(main)/game/[id]/page.tsx`
-- Cargar partida desde Supabase por ID
-- Suscribirse a cambios en `games.moves` via Realtime
-- Cada movimiento: insertar en `games.moves` y actualizar FEN
-- Al terminar: llamar `resolve_game()` desde el cliente
-
-**Paso 2.3 — Actualizar `/play` para usar matchmaking real**
-- Botón "Find Opponent" → llama `useMatchmaking`
-- Botón "PLAY $X" → verifica saldo en wallet antes de buscar
-- Mostrar estado de búsqueda (spinner, "Buscando oponente...")
-
-**Paso 2.4 — Actualizar store de ajedrez para partidas online**
-- Extender `useChessStore` para modo online vs modo local
-- En modo online: validar movimientos localmente pero sincronizar via Supabase
+### ❌ Pendiente — Ordenado por prioridad
 
 ---
 
-### ÁREA 3 — Wallet (Balance Real)
-> Sin pagos reales todavía. Primero: balance funcional.
-
-**Paso 3.1 — Hook `useWallet`**
-- Crear `src/hooks/useWallet.ts`
-- Leer balance de `wallets` en tiempo real via Realtime
-- Exponer `balance`, `transactions`, `loading`
-
-**Paso 3.2 — Conectar Sidebar y `/play` al balance real**
-- Reemplazar `$50.00` hardcodeado en `/play` por `useWallet`
-- El botón "PLAY $X" bloquear si `balance < selectedBet`
-
-**Paso 3.3 — Créditos de demostración (sin Stripe)**
-- Agregar botón "Get Demo Credits" en wallet
-- Server Action que suma $20 al balance (para testing/onboarding)
-- Esto permite probar el flujo completo de cash games sin integrar pagos
-
-**Paso 3.4 — Historial de transacciones**
-- Sección en `/settings` → Billing que lista `transactions` reales del usuario
+## Áreas Pendientes
 
 ---
 
-### ÁREA 4 — Conectar Datos Reales a UI existente
-> Las páginas tienen UI lista, solo cambiar mock data por DB.
+### ÁREA A — Seguridad (alta prioridad para apertura pública)
 
-**Paso 4.1 — Leaderboard real en `/social`**
-- Query a `profiles` ordenado por `elo` DESC con LEFT JOIN a `wallets`
-- Reemplazar array `leaderboard` hardcodeado
-- "Your Stats" → leer del `profile` + `wallets` del usuario logueado
+**A.1 — Race condition en matchmaking (parcialmente OK)**
+- El código ya usa `update ... where status='waiting' and player_black=null` (atómico a nivel Postgres)
+- Lo que falta: timeout automático si nadie se une en 5 min → marcar game como `aborted`
+- Implementar: cron job en Supabase o Edge Function que limpie games `waiting` > 5 min
 
-**Paso 4.2 — Historial de partidas en `/social` o `/settings`**
-- Query a `games` donde `player_white = user_id OR player_black = user_id`
-- Mostrar últimas 10 partidas: oponente, resultado, ELO ganado/perdido
+**A.2 — Validación server-side de movimientos**
+- Hoy los movimientos se validan solo en el cliente con chess.js
+- Un usuario malicioso puede enviar movimientos inválidos directamente a Supabase
+- Solución: crear Edge Function `POST /functions/v1/submit-move` que valide con chess.js server-side
+- La tabla `games.moves` solo se escribe desde esta función (revocar permisos directos)
 
-**Paso 4.3 — Settings Profile funcional**
-- Formulario para actualizar `full_name` y `avatar_url`
-- Ya existe `updateProfile()` server action, solo conectar UI
-
-**Paso 4.4 — ELO real en `/puzzles`**
-- Leer ELO del `profile` real en lugar de `1,340` hardcodeado
+**A.3 — Rate limiting en APIs**
+- `/api/chat` y `/api/puzzle/next` son públicas sin rate limiting
+- Agregar `@upstash/ratelimit` o middleware de Vercel para limitar requests por IP/usuario
 
 ---
 
-### ÁREA 5 — Puzzles Interactivos
-> Feature secundaria pero de alto engagement. Se puede hacer con datos gratuitos.
+### ÁREA B — Features de Engagement
 
-**Paso 5.1 — Integrar Lichess Puzzle API (gratuita)**
-- Lichess tiene API pública de puzzles: `lichess.org/api/puzzle/daily`
-- Crear `src/features/puzzles/services/puzzleService.ts`
-- Obtener puzzle random + solución
+**B.1 — ELO Matching real**
+- El matchmaking actual acepta cualquier oponente sin filtro de ELO
+- Implementar: buscar games en rango ±200 ELO, expandir ±50 cada 30 seg de espera
+- Evitar que un principiante (800 ELO) juegue contra un experto (2000 ELO)
 
-**Paso 5.2 — Tablero de puzzles interactivo**
-- Reutilizar `ChessBoardGame` con modo puzzle
-- Forzar color del jugador según el puzzle
-- Validar secuencia de movimientos contra solución correcta
+**B.2 — Historial de movimientos en UI del juego**
+- La partida muestra solo el tablero, sin historial de movimientos
+- Los movimientos ya se guardan en `games.moves[]` con SAN notation
+- Agregar panel lateral con la lista de movimientos: `1. e4 e5 2. Nf3 Nc6...`
+- Resaltar el movimiento actual, poder hacer click para retroceder (modo espectador)
 
-**Paso 5.3 — Tracker de puzzles resueltos**
-- Guardar puzzles resueltos en `profiles` (campo JSONB `puzzles_solved`)
-- Mostrar racha y conteo real en lugar de "126 Solved"
+**B.3 — Comeback King achievement**
+- El único logro no implementado: "ganar desde posición perdedora"
+- Requiere análisis de evaluación de posición durante la partida (Stockfish)
+- Detectar: evaluación < -2.0 (perdiendo) → luego gana → award achievement
+- Stockfish.js en browser es viable (sin costo de servidor)
+
+**B.4 — Search de jugadores**
+- `/search` está vacía sin funcionalidad
+- Buscar jugadores por nombre/username
+- Ver perfil público: ELO, logros, win rate, historial reciente
 
 ---
 
-### ÁREA 6 — Pagos Reales (Última Prioridad)
-> Solo cuando el flujo de partidas funcione end-to-end.
+### ÁREA C — Calidad y Operaciones
 
-**Paso 6.1 — Integrar Polar (ya en el stack de SaaS Factory)**
-- Usar skill `add-payments` cuando llegue el momento
-- Crear productos: "Deposit $10", "Deposit $25", "Deposit $100"
-- Webhook de Polar → suma al balance en `wallets`
+**C.1 — Error monitoring (Sentry)**
+- Sin monitoring, los bugs en producción son invisibles
+- Instalar `@sentry/nextjs`, configurar `SENTRY_DSN`
+- Capturar errores en server actions, API routes, y client-side
 
-**Paso 6.2 — Retiros**
-- Formulario de retiro → crea `transaction` con type='withdrawal'
-- Procesar manualmente al inicio (transferencia bancaria) hasta tener volumen
-- No construir automatización de retiros hasta tener usuarios reales
+**C.2 — PGN estándar**
+- Los movimientos se guardan como array JSON (from/to/san) pero no como PGN estándar
+- El campo `games.pgn` existe pero no se escribe
+- Construir el PGN al terminar la partida y guardarlo
+- Permite: análisis post-partida, exportar, análisis con engines externos
+
+**C.3 — Avatar upload**
+- Settings solo permite cambiar nombre
+- Supabase Storage bucket `avatars` + input de archivo en Settings
+- Mostrar avatar en Sidebar, partidas, leaderboard
+
+**C.4 — Notificaciones browser**
+- Cuando el oponente hace un movimiento y la pestaña no está en foco → notificación browser
+- `Notification API` nativa (sin PWA requerida)
+- "Magnus hizo un movimiento en tu partida"
+
+---
+
+### ÁREA D — Crecimiento (post primeros usuarios)
+
+**D.1 — Análisis post-partida**
+- Ver la partida movimiento a movimiento después de terminar
+- Integrar Stockfish.js (browser, sin costo servidor)
+- Mostrar evaluación de cada posición (+1.2, -0.8, etc.)
+
+**D.2 — Torneos básicos**
+- Sistema de brackets: 8 o 16 jugadores
+- Premio en $KING tokens al ganador
+- Tabla de posiciones durante el torneo
+
+**D.3 — Token on-chain ($KING)**
+- Solo cuando el modelo funcione off-chain y haya volumen real
+- Desplegar contrato ERC-20 o SPL token
+- Integrar WalletConnect / MetaMask
+- Bridge entre balance custodial y on-chain
 
 ---
 
 ## Orden de Ejecución Recomendado
 
 ```
-Semana 1:
-  [x] Auth + BD base (DONE)
-  [ ] Área 1: Crear tablas wallets + games + transactions (2h)
-  [ ] Área 3, Paso 3.1-3.3: Wallet hook + créditos demo (2h)
+Esta semana (lanzamiento beta cerrado):
+  [ ] A.1 Timeout automático de matchmaking (Supabase cron)
+  [ ] B.1 ELO matching ±200 en matchmaking
+  [ ] B.2 Historial de movimientos en UI del juego
+  [ ] C.1 Sentry para error monitoring
 
-Semana 2:
-  [ ] Área 2: Matchmaking + página /game/[id] (el más complejo, 1-2 días)
-  [ ] Área 2, Paso 2.3: Botones de /play funcionales
-
-Semana 3:
-  [ ] Área 4: Conectar leaderboard, historial, settings (4h)
-  [ ] Área 5: Puzzles interactivos con Lichess API (4h)
+Siguiente semana (apertura pública):
+  [ ] A.2 Validación server-side de movimientos (Edge Function)
+  [ ] A.3 Rate limiting en APIs
+  [ ] B.4 Search de jugadores
+  [ ] C.2 PGN estándar al terminar partidas
+  [ ] C.3 Avatar upload
 
 Cuando haya usuarios reales:
-  [ ] Área 6: Pagos con Polar
+  [ ] B.3 Comeback King achievement (Stockfish.js)
+  [ ] C.4 Notificaciones browser
+  [ ] D.1 Análisis post-partida
+  [ ] D.2 Torneos básicos
+  [ ] D.3 Token on-chain
 ```
 
 ---
 
-## Lo Que NO Hacer Todavía (con presupuesto escaso)
+## Lo Que NO Hacer Todavía
 
-- ❌ Anti-cheat (complejo, costoso, no necesario en MVP)
-- ❌ Torneos automatizados (bracket management es complejo)
-- ❌ Chat en vivo entre jugadores (puede ser chat de texto simple después)
-- ❌ /watch con partidas reales (requiere streaming de tableros en vivo)
-- ❌ Mobile app / PWA push notifications
-- ❌ Análisis de partidas post-game (motor stockfish server-side = costoso)
+- ❌ Contrato on-chain (costoso, prematuro sin usuarios)
+- ❌ Mobile app / PWA push notifications (la web funciona bien)
+- ❌ Análisis server-side con Stockfish (costoso en servidor)
+- ❌ Chat en vivo entre jugadores
 - ❌ Sistema de amigos/seguidores
+- ❌ Pagos fiat (Stripe/Polar) → el modelo es tokens ganados jugando
 
 ---
 
-## Deuda Técnica a No Ignorar
+## Deuda Técnica
 
-- `search/page.tsx` → vacía, sin funcionalidad. Dejar para el final.
-- `dashboard/page.tsx` → no está en la nav, ignorar.
-- `cash/page.tsx` → duplica funcionalidad de `/play`. Unificar o eliminar.
-- Remover `SUPABASE_SERVICE_ROLE_KEY=pending` del .env cuando se use.
+- `search/page.tsx` → vacía, sin funcionalidad. Dejar para ÁREA B.4
+- `dashboard/page.tsx` → implementado ✅ (antes era placeholder)
+- `watch/page.tsx` → implementado con partidas reales ✅
+- `games.pgn` → campo existe en BD pero nunca se escribe (ÁREA C.2)
+- `games.moves` tipo `unknown[]` → mejorar tipado a `StoredMove[]`
+- `useWallet.ts` → hook redundante con usePlayerLevel para token_balance, considerar unificar
+- `Comeback King` achievement → único logro sin implementar
+
+---
+
+## Arquitectura Actual — Resumen
+
+```
+BD (Supabase):
+  profiles → id, email, full_name, elo, xp, level, token_balance,
+             win_streak, puzzle_count, last_daily_login
+  games    → id, player_white, player_black, game_type, bet_amount,
+             time_control, status, moves, result, white_time_ms,
+             black_time_ms, last_move_at, fen_final, pgn
+  transactions → user_id, type, amount, game_id, description
+  achievements → user_id, achievement_key, xp_awarded, unlocked_at
+
+RPCs:
+  resolve_game(game_id, winner_id)  → ELO + XP + tokens + achievements
+  puzzle_solved()                    → +5 XP + puzzle_count + Puzzle Addict
+  claim_daily_login_bonus()          → +10 XP (idempotente por día)
+  award_xp(user_id, amount)          → suma XP + recalcula nivel
+  grant_achievement(user_id, key, xp)→ INSERT achievements + award_xp (idempotente)
+  flag_timeout(game_id)              → valida tiempo + resolve_game
+
+Rutas activas:
+  / (landing con stats reales)
+  /play (Free vs Token, Level 10 lock)
+  /game/[id] (tablero online + reloj real)
+  /puzzles (daily puzzle + XP)
+  /puzzles/rush (Puzzle Rush 5 min)
+  /learn (AI Tutor Gemini 2.5 Flash)
+  /watch (partidas activas en tiempo real)
+  /social (leaderboard + historial)
+  /cash (balance $KING + historial)
+  /dashboard (stats personales reales)
+  /settings (perfil + level + logros)
+  /login, /register, /forgot-password, /update-password
+```
 
 ---
 
 ## Resumen Ejecutivo
 
-El proyecto tiene **excelente UI** pero cero lógica de negocio real.
-El único paso que genera valor real es **Área 2 (Partidas Reales)**.
-Todo lo demás son features secundarias que se pueden hacer en horas.
+El producto tiene **loop de engagement completo**:
+> Registrarse → jugar gratis → ganar XP → subir niveles → desbloquear token betting → apostar $KING → ganar más tokens
 
-**Foco total: hacer que dos usuarios puedan jugarse $5 reales entre sí.**
-Cuando eso funcione, el resto es decoración.
+El stack técnico funciona en producción. Las próximas prioridades son **seguridad** (validación server-side de movimientos) y **calidad de experiencia** (ELO matching, historial de movimientos, error monitoring).
+
+**Bloqueador real para escalar: validación server-side de movimientos (A.2).**
+Sin esto, cualquier usuario puede manipular el resultado de una partida con tokens.
