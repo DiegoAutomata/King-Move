@@ -3,10 +3,11 @@
 import { use, useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Chessboard } from "react-chessboard";
-import { Crown, Flag, Loader2, ArrowLeft, Clock, BookOpen, Sparkles } from "lucide-react";
+import { Crown, Flag, Loader2, ArrowLeft, Clock, BookOpen, Sparkles, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { checkComebackKing } from "@/actions/achievements";
 import { analyzeGame } from "@/actions/analyzeGame";
+import { reportPlayer } from "@/actions/reportPlayer";
 import { useOnlineGame } from "@/features/chess-engine/hooks/useOnlineGame";
 import { useGameClock } from "@/features/chess-engine/hooks/useGameClock";
 
@@ -19,6 +20,12 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   const [boardWidth, setBoardWidth] = useState(400);
   const [showResignConfirm, setShowResignConfirm] = useState(false);
   const [comebackToast, setComebackToast] = useState(false);
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState<'cheating' | 'harassment' | 'stalling' | 'other'>('cheating');
+  const [reportNote, setReportNote] = useState('');
+  const [reportDone, setReportDone] = useState(false);
+  const [reportError, setReportError] = useState<string | null>(null);
+  const [reportPending, setReportPending] = useState(false);
   const [, startAchievementCheck] = useTransition();
   const checkedComebackRef = useRef(false);
 
@@ -103,6 +110,20 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     if (containerRef.current) observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
+
+  async function handleReport() {
+    if (!opponent?.id) return;
+    setReportPending(true);
+    setReportError(null);
+    const res = await reportPlayer({ gameId, reportedId: opponent.id, reason: reportReason, note: reportNote || undefined });
+    setReportPending(false);
+    if (res.success) {
+      setReportDone(true);
+      setShowReport(false);
+    } else {
+      setReportError(res.error ?? 'Error submitting report');
+    }
+  }
 
   function onDrop(sourceSquare: string, targetSquare: string) {
     makeMove(sourceSquare, targetSquare);
@@ -431,13 +452,67 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         )}
 
         {status === "finished" && (
-          <div className="mt-auto">
+          <div className="mt-auto flex flex-col gap-2">
             <button
               onClick={() => router.push("/play")}
               className="w-full bg-primary-chess hover:bg-primary-hover text-black font-black py-3 rounded-xl flex items-center justify-center gap-2"
             >
               <Crown size={16} /> Play Again
             </button>
+
+            {/* Report opponent — only shown to players, not spectators */}
+            {myColor && opponent?.id && (
+              reportDone ? (
+                <div className="flex items-center justify-center gap-1.5 text-xs text-green-400 font-semibold py-1">
+                  <CheckCircle2 size={13} /> Report submitted
+                </div>
+              ) : !showReport ? (
+                <button
+                  onClick={() => setShowReport(true)}
+                  className="w-full flex items-center justify-center gap-1.5 text-gray-600 hover:text-gray-400 text-xs font-semibold py-1.5 transition-colors"
+                >
+                  <ShieldAlert size={12} /> Report opponent
+                </button>
+              ) : (
+                <div className="bg-bg-panel border border-white/10 rounded-xl p-3 flex flex-col gap-2">
+                  <p className="text-xs text-gray-400 font-semibold">Report {opponentName}</p>
+                  <select
+                    value={reportReason}
+                    onChange={e => setReportReason(e.target.value as typeof reportReason)}
+                    className="w-full bg-bg-chess border border-white/10 text-gray-300 text-xs rounded-lg px-2 py-1.5 outline-none"
+                  >
+                    <option value="cheating">Engine / Cheating</option>
+                    <option value="harassment">Harassment</option>
+                    <option value="stalling">Stalling</option>
+                    <option value="other">Other</option>
+                  </select>
+                  <textarea
+                    value={reportNote}
+                    onChange={e => setReportNote(e.target.value)}
+                    placeholder="Optional note (max 500 chars)"
+                    maxLength={500}
+                    rows={2}
+                    className="w-full bg-bg-chess border border-white/10 text-gray-300 text-xs rounded-lg px-2 py-1.5 outline-none resize-none placeholder-gray-600"
+                  />
+                  {reportError && <p className="text-red-400 text-[10px]">{reportError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => { setShowReport(false); setReportError(null); }}
+                      className="flex-1 bg-white/5 border border-white/10 text-gray-500 text-xs font-semibold py-1.5 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleReport}
+                      disabled={reportPending}
+                      className="flex-1 bg-red-900/30 hover:bg-red-900/50 border border-red-800/40 text-red-400 text-xs font-bold py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      {reportPending ? 'Sending…' : 'Submit'}
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
           </div>
         )}
       </div>

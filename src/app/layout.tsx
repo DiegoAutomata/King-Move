@@ -5,6 +5,7 @@ import { MainLayout } from '@/shared/components/layout/MainLayout'
 export const metadata: Metadata = {
   title: 'King Move - Play Chess & Win Real Money',
   description: 'The premier competitive chess platform. Play for fun, train with AI, or bet real cash in ELO-based leagues.',
+  icons: { icon: '/king-move-logo.png' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -74,7 +74,7 @@ class StockfishEngine {
   }
 
   async getBestMove(fen: string, difficulty: BotDifficulty): Promise<StockfishMove | null> {
-    if (!this.initPromise) await this.init()
+    await this.init()
     if (!this.ready || !this.worker) return null
 
     return new Promise<StockfishMove | null>((resolve) => {

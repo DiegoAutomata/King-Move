@@ -48,7 +48,9 @@ export default function PlayPage() {
 
   function handlePlayBot() {
     const depthMap: Record<BotDifficulty, number> = { easy: 1, medium: 2, hard: 3, expert: 4 };
-    router.push(`/game/bot?depth=${depthMap[botDifficulty]}&color=random`);
+    const timeMap: Record<string, number> = { "3 min": 3*60*1000, "10 min": 10*60*1000, "30 min": 30*60*1000 };
+    const timeMs = timeMap[selectedTime] ?? 10*60*1000;
+    router.push(`/game/bot?depth=${depthMap[botDifficulty]}&color=random&time=${timeMs}`);
   }
 
   return (

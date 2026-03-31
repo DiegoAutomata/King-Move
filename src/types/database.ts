@@ -47,12 +47,25 @@ export interface Game {
   // Analysis & anti-cheat (populated async after game finishes)
   accuracy_white:      number | null
   accuracy_black:      number | null
+  acpl_white:          number | null
+  acpl_black:          number | null
   cheat_score_white:   number | null
   cheat_score_black:   number | null
   cheat_flagged_white: boolean
   cheat_flagged_black: boolean
   anti_cheat_checked:  boolean
   move_evals:          PositionEval[] | null
+}
+
+export interface Report {
+  id:          string
+  reporter_id: string
+  reported_id: string
+  game_id:     string
+  reason:      'cheating' | 'harassment' | 'stalling' | 'other'
+  note:        string | null
+  status:      'pending' | 'reviewed' | 'dismissed'
+  created_at:  string
 }
 
 export interface Transaction {
@@ -86,6 +99,11 @@ export interface Database {
       transactions: {
         Row: Transaction
         Insert: Omit<Transaction, 'id' | 'created_at'>
+        Update: never
+      }
+      reports: {
+        Row: Report
+        Insert: Omit<Report, 'id' | 'status' | 'created_at'>
         Update: never
       }
     }

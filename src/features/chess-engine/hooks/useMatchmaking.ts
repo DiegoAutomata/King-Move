@@ -34,6 +34,21 @@ export function useMatchmaking(): UseMatchmakingReturn {
     setStatus('searching')
     setError(null)
 
+    // Sybil protection: require 10 finished games before betting tokens
+    if (opts.gameType === 'token') {
+      const { count: gamesPlayed } = await supabase
+        .from('games')
+        .select('*', { count: 'exact', head: true })
+        .or(`player_white.eq.${opts.userId},player_black.eq.${opts.userId}`)
+        .eq('status', 'finished')
+
+      if ((gamesPlayed ?? 0) < 10) {
+        setError('Play 10 free games first to unlock token bets.')
+        setStatus('error')
+        return
+      }
+    }
+
     // Verificar tokens si es token game
     if (opts.gameType === 'token' && opts.betAmount > 0) {
       const { data: profile } = await supabase

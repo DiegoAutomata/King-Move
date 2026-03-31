@@ -3,15 +3,8 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { Chess } from 'chess.js'
 import { createClient } from '@/lib/supabase/client'
+import { parseStoredMoves, type StoredMove } from '@/shared/types/storedMove'
 import type { Game } from '@/types/database'
-
-interface StoredMove {
-  from: string
-  to: string
-  promotion?: string
-  san: string
-  fen: string
-}
 
 export type GameResult = 'white' | 'black' | 'draw' | null
 
@@ -121,7 +114,7 @@ export function useOnlineGame(gameId: string, userId: string): UseOnlineGameRetu
         ? 'black'
         : null
 
-    const moves = (gameData.moves ?? []) as StoredMove[]
+    const moves = parseStoredMoves(gameData.moves)
     const chess = applyMoves(moves)
     gameRef.current = chess
 
@@ -185,7 +178,7 @@ export function useOnlineGame(gameId: string, userId: string): UseOnlineGameRetu
         { event: 'UPDATE', schema: 'public', table: 'games', filter: `id=eq.${gameId}` },
         (payload) => {
           const updated = payload.new as Game
-          const updatedMoves = (updated.moves ?? []) as StoredMove[]
+          const updatedMoves = parseStoredMoves(updated.moves)
           const chess = applyMoves(updatedMoves)
           gameRef.current = chess
 
@@ -222,7 +215,16 @@ export function useOnlineGame(gameId: string, userId: string): UseOnlineGameRetu
       )
       .subscribe()
 
-    return () => { supabase.removeChannel(channel) }
+    // Re-sync when the tab regains focus (handles WebSocket drops)
+    function onVisibilityChange() {
+      if (document.visibilityState === 'visible') loadGame()
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      supabase.removeChannel(channel)
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
   }, [gameId, userId, loadGame, applyMoves])
 
   const makeMove = useCallback(async (from: string, to: string, promotion?: string): Promise<boolean> => {
