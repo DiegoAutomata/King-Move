@@ -31,6 +31,7 @@ function BotGameInner() {
   const movesEndRef  = useRef<HTMLDivElement>(null);
   const startedRef   = useRef(false);
   const [boardWidth, setBoardWidth] = useState(400);
+  const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
 
   const {
     fen, status, playerColor, lastMove, moves,
@@ -56,6 +57,11 @@ function BotGameInner() {
   useEffect(() => {
     movesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [moves.length]);
+
+  // Clear selection on state changes
+  useEffect(() => {
+    setSelectedSquare(null);
+  }, [status, isThinking]);
 
   // Parse URL params and kick off game
   useEffect(() => {
@@ -94,10 +100,29 @@ function BotGameInner() {
   const playerLow          = playerTimeMs !== null && playerTimeMs < 30_000;
   const botLow             = botTimeMs    !== null && botTimeMs    < 30_000;
 
-  const customSquareStyles: Record<string, React.CSSProperties> = lastMove ? {
-    [lastMove.from]: { backgroundColor: "rgba(255,255,0,0.3)" },
-    [lastMove.to]:   { backgroundColor: "rgba(255,255,0,0.45)" },
-  } : {};
+  const customSquareStyles: Record<string, React.CSSProperties> = {
+    ...(lastMove ? {
+      [lastMove.from]: { backgroundColor: "rgba(255,255,0,0.3)" },
+      [lastMove.to]:   { backgroundColor: "rgba(255,255,0,0.45)" },
+    } : {}),
+    ...(selectedSquare ? {
+      [selectedSquare]: { backgroundColor: "rgba(100,180,255,0.5)" },
+    } : {}),
+  };
+
+  const handleSquareClick = ({ square }: { piece: string | null; square: string }) => {
+    if (status !== "playing" || isThinking) return;
+    if (selectedSquare) {
+      const moved = makePlayerMove(selectedSquare, square);
+      setSelectedSquare(null);
+      if (!moved) {
+        // Clicked a different own piece — select it instead
+        setSelectedSquare(square);
+      }
+    } else {
+      setSelectedSquare(square);
+    }
+  };
 
   // Move pairs for notation display
   const movePairs: Array<{ w?: string; b?: string }> = [];
@@ -206,14 +231,20 @@ function BotGameInner() {
         {/* Board container — flex-1 takes remaining space */}
         <div ref={containerRef} className="flex-1 flex items-center justify-center relative min-h-0 min-w-0">
           {(Chessboard as any)({
-            position: fen,
-            onPieceDrop: (from: string, to: string) => makePlayerMove(from, to),
-            boardWidth,
-            boardOrientation: isFlipped ? "black" : "white",
-            customDarkSquareStyle:  { backgroundColor: "#b58863" },
-            customLightSquareStyle: { backgroundColor: "#f0d9b5" },
-            customSquareStyles,
-            arePiecesDraggable: status === "playing" && !isThinking,
+            options: {
+              position: fen,
+              onPieceDrop: ({ sourceSquare, targetSquare }: { piece: string; sourceSquare: string; targetSquare: string }) => {
+                setSelectedSquare(null);
+                return makePlayerMove(sourceSquare, targetSquare);
+              },
+              onSquareClick: handleSquareClick,
+              boardStyle: { width: `${boardWidth}px`, height: `${boardWidth}px` },
+              boardOrientation: isFlipped ? "black" : "white",
+              darkSquareStyle:  { backgroundColor: "#b58863" },
+              lightSquareStyle: { backgroundColor: "#f0d9b5" },
+              squareStyles: customSquareStyles,
+              allowDragging: status === "playing" && !isThinking,
+            },
           })}
 
           {/* Thinking pill */}
