@@ -1,0 +1,266 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "King Move Chess Platform" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - generic [ref=e9]: King Move
+          - generic [ref=e10]: Chess Platform
+      - navigation [ref=e12]:
+        - link "Play" [ref=e13] [cursor=pointer]:
+          - /url: /play
+          - img [ref=e15]
+          - generic [ref=e17]: Play
+        - link "Puzzles" [ref=e18] [cursor=pointer]:
+          - /url: /puzzles
+          - img [ref=e20]
+          - generic [ref=e22]: Puzzles
+        - link "Learn" [ref=e23] [cursor=pointer]:
+          - /url: /learn
+          - img [ref=e25]
+          - generic [ref=e28]: Learn
+        - link "Watch" [ref=e29] [cursor=pointer]:
+          - /url: /watch
+          - img [ref=e31]
+          - generic [ref=e34]: Watch
+        - link "Social" [ref=e35] [cursor=pointer]:
+          - /url: /social
+          - img [ref=e37]
+          - generic [ref=e42]: Social
+        - link "$KING" [ref=e43] [cursor=pointer]:
+          - /url: /cash
+          - img [ref=e45]
+          - generic [ref=e50]: $KING
+        - link "Dashboard" [ref=e51] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e53]
+          - generic [ref=e58]: Dashboard
+        - link "Tournaments" [ref=e59] [cursor=pointer]:
+          - /url: /tournaments
+          - img [ref=e61]
+          - generic [ref=e67]: Tournaments
+      - generic [ref=e68]:
+        - link "Search" [ref=e70] [cursor=pointer]:
+          - /url: /search
+          - img [ref=e72]
+          - generic [ref=e75]: Search
+        - link "Settings" [ref=e76] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e78]
+          - generic [ref=e81]: Settings
+        - generic [ref=e83]:
+          - generic [ref=e84]:
+            - generic [ref=e86]: Q
+            - generic [ref=e87]:
+              - generic [ref=e88]: qatest.kingmove
+              - generic [ref=e89]: 1200 ELO · Lv.1
+              - generic [ref=e92]: ⬡ 0 $KING
+          - button "Sign Out" [ref=e94] [cursor=pointer]:
+            - img [ref=e95]
+            - text: Sign Out
+    - main [ref=e99]:
+      - generic [ref=e100]:
+        - generic [ref=e101]:
+          - link "King Move Chess Platform" [ref=e102] [cursor=pointer]:
+            - /url: /
+            - img [ref=e104]
+            - generic [ref=e106]:
+              - generic [ref=e107]: King Move
+              - generic [ref=e108]: Chess Platform
+          - navigation [ref=e110]:
+            - link "Play" [ref=e111] [cursor=pointer]:
+              - /url: /play
+              - img [ref=e113]
+              - generic [ref=e115]: Play
+            - link "Puzzles" [ref=e116] [cursor=pointer]:
+              - /url: /puzzles
+              - img [ref=e118]
+              - generic [ref=e120]: Puzzles
+            - link "Learn" [ref=e121] [cursor=pointer]:
+              - /url: /learn
+              - img [ref=e123]
+              - generic [ref=e126]: Learn
+            - link "Watch" [ref=e127] [cursor=pointer]:
+              - /url: /watch
+              - img [ref=e129]
+              - generic [ref=e132]: Watch
+            - link "Social" [ref=e133] [cursor=pointer]:
+              - /url: /social
+              - img [ref=e135]
+              - generic [ref=e140]: Social
+            - link "$KING" [ref=e141] [cursor=pointer]:
+              - /url: /cash
+              - img [ref=e143]
+              - generic [ref=e148]: $KING
+            - link "Dashboard" [ref=e149] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e151]
+              - generic [ref=e156]: Dashboard
+            - link "Tournaments" [ref=e157] [cursor=pointer]:
+              - /url: /tournaments
+              - img [ref=e159]
+              - generic [ref=e165]: Tournaments
+          - generic [ref=e166]:
+            - link "Search" [ref=e168] [cursor=pointer]:
+              - /url: /search
+              - img [ref=e170]
+              - generic [ref=e173]: Search
+            - link "Settings" [ref=e174] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e176]
+              - generic [ref=e179]: Settings
+            - generic [ref=e181]:
+              - generic [ref=e182]:
+                - generic [ref=e184]: Q
+                - generic [ref=e185]:
+                  - generic [ref=e186]: qatest.kingmove
+                  - generic [ref=e187]: 1200 ELO · Lv.1
+                  - generic [ref=e190]: ⬡ 0 $KING
+              - button "Sign Out" [ref=e192] [cursor=pointer]:
+                - img [ref=e193]
+                - text: Sign Out
+        - main [ref=e197]:
+          - generic [ref=e198]:
+            - generic [ref=e199]:
+              - generic [ref=e200]:
+                - generic [ref=e201]:
+                  - img [ref=e203]
+                  - generic [ref=e206]:
+                    - paragraph [ref=e207]: King Bot — Medium
+                    - paragraph [ref=e208]: ~1300 ELO
+                - generic [ref=e209]: 10:00
+              - generic [ref=e210]:
+                - generic [ref=e211]:
+                  - generic [ref=e213]:
+                    - generic [ref=e214]: "8"
+                    - button [ref=e216] [cursor=pointer]:
+                      - img [ref=e218]
+                  - button [ref=e229] [cursor=pointer]:
+                    - img [ref=e231]
+                  - button [ref=e241] [cursor=pointer]:
+                    - img [ref=e243]
+                  - button [ref=e253] [cursor=pointer]:
+                    - img [ref=e255]
+                  - button [ref=e274] [cursor=pointer]:
+                    - img [ref=e276]
+                  - button [ref=e285] [cursor=pointer]:
+                    - img [ref=e287]
+                  - button [ref=e297] [cursor=pointer]:
+                    - img [ref=e299]
+                  - button [ref=e309] [cursor=pointer]:
+                    - img [ref=e311]
+                  - generic [ref=e320]:
+                    - generic [ref=e321]: "7"
+                    - button [ref=e323] [cursor=pointer]:
+                      - img [ref=e325]
+                  - button [ref=e330] [cursor=pointer]:
+                    - img [ref=e332]
+                  - button [ref=e337] [cursor=pointer]:
+                    - img [ref=e339]
+                  - button [ref=e344] [cursor=pointer]:
+                    - img [ref=e346]
+                  - button [ref=e351] [cursor=pointer]:
+                    - img [ref=e353]
+                  - button [ref=e358] [cursor=pointer]:
+                    - img [ref=e360]
+                  - button [ref=e365] [cursor=pointer]:
+                    - img [ref=e367]
+                  - button [ref=e372] [cursor=pointer]:
+                    - img [ref=e374]
+                  - generic [ref=e378]: "6"
+                  - generic [ref=e403]: "5"
+                  - generic [ref=e428]: "4"
+                  - generic [ref=e453]: "3"
+                  - generic [ref=e477]:
+                    - generic [ref=e478]: "2"
+                    - button [ref=e480] [cursor=pointer]:
+                      - img [ref=e482]
+                  - button [ref=e487] [cursor=pointer]:
+                    - img [ref=e489]
+                  - button [ref=e494] [cursor=pointer]:
+                    - img [ref=e496]
+                  - button [ref=e501] [cursor=pointer]:
+                    - img [ref=e503]
+                  - button [active] [ref=e508] [cursor=pointer]:
+                    - img [ref=e510]
+                  - button [ref=e515] [cursor=pointer]:
+                    - img [ref=e517]
+                  - button [ref=e522] [cursor=pointer]:
+                    - img [ref=e524]
+                  - button [ref=e529] [cursor=pointer]:
+                    - img [ref=e531]
+                  - generic [ref=e534]:
+                    - generic:
+                      - generic [ref=e535]: a
+                      - generic [ref=e536]: "1"
+                    - button [ref=e538] [cursor=pointer]:
+                      - img [ref=e540]
+                  - generic [ref=e549]:
+                    - generic [ref=e550]: b
+                    - button [ref=e552] [cursor=pointer]:
+                      - img [ref=e554]
+                  - generic [ref=e561]:
+                    - generic [ref=e562]: c
+                    - button [ref=e564] [cursor=pointer]:
+                      - img [ref=e566]
+                  - generic [ref=e574]:
+                    - generic [ref=e575]: d
+                    - button [ref=e577] [cursor=pointer]:
+                      - img [ref=e579]
+                  - generic [ref=e591]:
+                    - generic [ref=e592]: e
+                    - button [ref=e594] [cursor=pointer]:
+                      - img [ref=e596]
+                  - generic [ref=e604]:
+                    - generic [ref=e605]: f
+                    - button [ref=e607] [cursor=pointer]:
+                      - img [ref=e609]
+                  - generic [ref=e617]:
+                    - generic [ref=e618]: g
+                    - button [ref=e620] [cursor=pointer]:
+                      - img [ref=e622]
+                  - generic [ref=e629]:
+                    - generic [ref=e630]: h
+                    - button [ref=e632] [cursor=pointer]:
+                      - img [ref=e634]
+                  - img
+                - status [ref=e642]: Draggable item e2 was dropped over droppable area e2
+              - generic [ref=e643]:
+                - generic [ref=e644]:
+                  - generic [ref=e645]: P
+                  - generic [ref=e646]:
+                    - paragraph [ref=e647]: Player
+                    - paragraph [ref=e648]: 1200 ELO
+                - generic [ref=e649]: 9:55
+            - generic [ref=e650]:
+              - button "Back to Play" [ref=e651] [cursor=pointer]:
+                - img [ref=e652]
+                - text: Back to Play
+              - generic [ref=e654]:
+                - paragraph [ref=e655]: Bot Match
+                - generic [ref=e656]:
+                  - generic [ref=e657]: Difficulty
+                  - generic [ref=e658]: Medium
+                - generic [ref=e659]:
+                  - generic [ref=e660]: Playing as
+                  - generic [ref=e661]: white
+                - generic [ref=e662]:
+                  - generic [ref=e663]: Time control
+                  - generic [ref=e664]: 10 min
+                - generic [ref=e665]:
+                  - generic [ref=e666]: Moves
+                  - generic [ref=e667]: "0"
+              - generic [ref=e668]:
+                - paragraph [ref=e670]: Moves
+                - paragraph [ref=e672]: No moves yet
+              - button "New Game" [ref=e673] [cursor=pointer]:
+                - img [ref=e674]
+                - text: New Game
+  - button "Open Next.js Dev Tools" [ref=e682] [cursor=pointer]:
+    - img [ref=e683]
+  - alert [ref=e686]
+```

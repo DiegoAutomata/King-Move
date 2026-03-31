@@ -1,0 +1,290 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - link "King Move Chess Platform" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - img [ref=e6]
+        - generic [ref=e8]:
+          - generic [ref=e9]: King Move
+          - generic [ref=e10]: Chess Platform
+      - navigation [ref=e11]:
+        - link "Play" [ref=e12] [cursor=pointer]:
+          - /url: /play
+          - img [ref=e14]
+          - generic [ref=e16]: Play
+        - link "Puzzles" [ref=e17] [cursor=pointer]:
+          - /url: /puzzles
+          - img [ref=e19]
+          - generic [ref=e21]: Puzzles
+        - link "Learn" [ref=e22] [cursor=pointer]:
+          - /url: /learn
+          - img [ref=e24]
+          - generic [ref=e27]: Learn
+        - link "Watch" [ref=e28] [cursor=pointer]:
+          - /url: /watch
+          - img [ref=e30]
+          - generic [ref=e33]: Watch
+        - link "Social" [ref=e34] [cursor=pointer]:
+          - /url: /social
+          - img [ref=e36]
+          - generic [ref=e41]: Social
+        - link "$KING" [ref=e42] [cursor=pointer]:
+          - /url: /cash
+          - img [ref=e44]
+          - generic [ref=e49]: $KING
+        - link "Dashboard" [ref=e50] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e52]
+          - generic [ref=e57]: Dashboard
+        - link "Tournaments" [ref=e58] [cursor=pointer]:
+          - /url: /tournaments
+          - img [ref=e60]
+          - generic [ref=e66]: Tournaments
+      - generic [ref=e67]:
+        - link "Search" [ref=e69] [cursor=pointer]:
+          - /url: /search
+          - img [ref=e71]
+          - generic [ref=e74]: Search
+        - link "Settings" [ref=e75] [cursor=pointer]:
+          - /url: /settings
+          - img [ref=e77]
+          - generic [ref=e80]: Settings
+        - link "Sign Up Free" [ref=e82] [cursor=pointer]:
+          - /url: /register
+          - img [ref=e83]
+          - text: Sign Up Free
+    - main [ref=e86]:
+      - generic [ref=e132]:
+        - generic [ref=e133]:
+          - link "King Move Chess Platform" [ref=e134] [cursor=pointer]:
+            - /url: /
+            - img [ref=e136]
+            - generic [ref=e138]:
+              - generic [ref=e139]: King Move
+              - generic [ref=e140]: Chess Platform
+          - navigation [ref=e141]:
+            - link "Play" [ref=e142] [cursor=pointer]:
+              - /url: /play
+              - img [ref=e145]
+              - generic [ref=e147]: Play
+            - link "Puzzles" [ref=e148] [cursor=pointer]:
+              - /url: /puzzles
+              - img [ref=e150]
+              - generic [ref=e152]: Puzzles
+            - link "Learn" [ref=e153] [cursor=pointer]:
+              - /url: /learn
+              - img [ref=e155]
+              - generic [ref=e158]: Learn
+            - link "Watch" [ref=e159] [cursor=pointer]:
+              - /url: /watch
+              - img [ref=e161]
+              - generic [ref=e164]: Watch
+            - link "Social" [ref=e165] [cursor=pointer]:
+              - /url: /social
+              - img [ref=e167]
+              - generic [ref=e172]: Social
+            - link "$KING" [ref=e173] [cursor=pointer]:
+              - /url: /cash
+              - img [ref=e175]
+              - generic [ref=e180]: $KING
+            - link "Dashboard" [ref=e181] [cursor=pointer]:
+              - /url: /dashboard
+              - img [ref=e183]
+              - generic [ref=e188]: Dashboard
+            - link "Tournaments" [ref=e189] [cursor=pointer]:
+              - /url: /tournaments
+              - img [ref=e191]
+              - generic [ref=e197]: Tournaments
+          - generic [ref=e198]:
+            - link "Search" [ref=e200] [cursor=pointer]:
+              - /url: /search
+              - img [ref=e202]
+              - generic [ref=e205]: Search
+            - link "Settings" [ref=e206] [cursor=pointer]:
+              - /url: /settings
+              - img [ref=e208]
+              - generic [ref=e211]: Settings
+            - generic [ref=e213]:
+              - generic [ref=e214]:
+                - generic [ref=e216]: Q
+                - generic [ref=e217]:
+                  - generic [ref=e218]: qatest.kingmove
+                  - generic [ref=e219]: 1200 ELO · Lv.1
+                  - generic [ref=e221]: ⬡ 0 $KING
+              - button "Sign Out" [ref=e223] [cursor=pointer]:
+                - img [ref=e224]
+                - text: Sign Out
+        - generic [ref=e228]:
+          - img [ref=e229]
+          - generic [ref=e231]: "Daily bonus: +10 XP"
+        - main [ref=e233]:
+          - generic [ref=e234]:
+            - generic [ref=e237]:
+              - generic [ref=e238]:
+                - generic [ref=e239]:
+                  - generic [ref=e240]: "?"
+                  - generic [ref=e241]:
+                    - generic [ref=e242]: Opponent
+                    - generic [ref=e243]: Waiting...
+                - generic [ref=e244]: 10:00
+              - generic [ref=e245]:
+                - generic [ref=e246]:
+                  - generic [ref=e248]:
+                    - generic [ref=e249]: "8"
+                    - button [ref=e251] [cursor=pointer]:
+                      - img [ref=e253]
+                  - button [ref=e264] [cursor=pointer]:
+                    - img [ref=e266]
+                  - button [ref=e276] [cursor=pointer]:
+                    - img [ref=e278]
+                  - button [ref=e288] [cursor=pointer]:
+                    - img [ref=e290]
+                  - button [ref=e309] [cursor=pointer]:
+                    - img [ref=e311]
+                  - button [ref=e320] [cursor=pointer]:
+                    - img [ref=e322]
+                  - button [ref=e332] [cursor=pointer]:
+                    - img [ref=e334]
+                  - button [ref=e344] [cursor=pointer]:
+                    - img [ref=e346]
+                  - generic [ref=e355]:
+                    - generic [ref=e356]: "7"
+                    - button [ref=e358] [cursor=pointer]:
+                      - img [ref=e360]
+                  - button [ref=e365] [cursor=pointer]:
+                    - img [ref=e367]
+                  - button [ref=e372] [cursor=pointer]:
+                    - img [ref=e374]
+                  - button [ref=e379] [cursor=pointer]:
+                    - img [ref=e381]
+                  - button [ref=e386] [cursor=pointer]:
+                    - img [ref=e388]
+                  - button [ref=e393] [cursor=pointer]:
+                    - img [ref=e395]
+                  - button [ref=e400] [cursor=pointer]:
+                    - img [ref=e402]
+                  - button [ref=e407] [cursor=pointer]:
+                    - img [ref=e409]
+                  - generic [ref=e413]: "6"
+                  - generic [ref=e438]: "5"
+                  - generic [ref=e463]: "4"
+                  - generic [ref=e488]: "3"
+                  - generic [ref=e512]:
+                    - generic [ref=e513]: "2"
+                    - button [ref=e515] [cursor=pointer]:
+                      - img [ref=e517]
+                  - button [ref=e522] [cursor=pointer]:
+                    - img [ref=e524]
+                  - button [ref=e529] [cursor=pointer]:
+                    - img [ref=e531]
+                  - button [ref=e536] [cursor=pointer]:
+                    - img [ref=e538]
+                  - button [ref=e543] [cursor=pointer]:
+                    - img [ref=e545]
+                  - button [ref=e550] [cursor=pointer]:
+                    - img [ref=e552]
+                  - button [ref=e557] [cursor=pointer]:
+                    - img [ref=e559]
+                  - button [ref=e564] [cursor=pointer]:
+                    - img [ref=e566]
+                  - generic [ref=e569]:
+                    - generic:
+                      - generic [ref=e570]: a
+                      - generic [ref=e571]: "1"
+                    - button [ref=e573] [cursor=pointer]:
+                      - img [ref=e575]
+                  - generic [ref=e584]:
+                    - generic [ref=e585]: b
+                    - button [ref=e587] [cursor=pointer]:
+                      - img [ref=e589]
+                  - generic [ref=e596]:
+                    - generic [ref=e597]: c
+                    - button [ref=e599] [cursor=pointer]:
+                      - img [ref=e601]
+                  - generic [ref=e609]:
+                    - generic [ref=e610]: d
+                    - button [ref=e612] [cursor=pointer]:
+                      - img [ref=e614]
+                  - generic [ref=e626]:
+                    - generic [ref=e627]: e
+                    - button [ref=e629] [cursor=pointer]:
+                      - img [ref=e631]
+                  - generic [ref=e639]:
+                    - generic [ref=e640]: f
+                    - button [ref=e642] [cursor=pointer]:
+                      - img [ref=e644]
+                  - generic [ref=e652]:
+                    - generic [ref=e653]: g
+                    - button [ref=e655] [cursor=pointer]:
+                      - img [ref=e657]
+                  - generic [ref=e664]:
+                    - generic [ref=e665]: h
+                    - button [ref=e667] [cursor=pointer]:
+                      - img [ref=e669]
+                  - img
+                - status [ref=e677]
+              - generic [ref=e678]:
+                - generic [ref=e679]:
+                  - generic [ref=e680]: YOU
+                  - generic [ref=e681]:
+                    - generic [ref=e682]: Player (1200)
+                    - generic [ref=e683]: Your turn ♟
+                - generic [ref=e684]: 10:00
+            - generic [ref=e685]:
+              - generic [ref=e687]:
+                - generic [ref=e688]:
+                  - generic [ref=e689]:
+                    - img [ref=e691]
+                    - generic [ref=e693]:
+                      - paragraph [ref=e694]: Level
+                      - paragraph [ref=e695]: "1"
+                  - generic [ref=e696]:
+                    - paragraph [ref=e697]: $KING Balance
+                    - paragraph [ref=e698]: ⬡ 0
+                - generic [ref=e700]:
+                  - generic [ref=e701]: 10 XP
+                  - generic [ref=e702]: 90 XP to Lv.2
+              - generic [ref=e706]:
+                - button "Free Play" [ref=e707] [cursor=pointer]:
+                  - img [ref=e708]
+                  - text: Free Play
+                - button "Token Play" [ref=e713] [cursor=pointer]:
+                  - img [ref=e714]
+                  - text: Token Play
+              - generic [ref=e716]:
+                - generic [ref=e717]:
+                  - generic [ref=e718]: Time Control
+                  - generic [ref=e719]:
+                    - button "3 min" [ref=e720] [cursor=pointer]
+                    - button "10 min" [ref=e721] [cursor=pointer]
+                    - button "30 min" [ref=e722] [cursor=pointer]
+                - generic [ref=e723]:
+                  - paragraph [ref=e724]: XP Rewards
+                  - generic [ref=e725]:
+                    - generic [ref=e726]: Win
+                    - generic [ref=e727]: +20 XP
+                  - generic [ref=e728]:
+                    - generic [ref=e729]: Draw
+                    - generic [ref=e730]: +10 XP
+                - generic [ref=e731]:
+                  - generic [ref=e732]:
+                    - generic [ref=e733]:
+                      - img [ref=e734]
+                      - paragraph [ref=e737]: Play vs Bot
+                    - generic [ref=e738]: Always available
+                  - generic [ref=e739]:
+                    - button "Easy" [ref=e740] [cursor=pointer]
+                    - button "Medium" [ref=e741] [cursor=pointer]
+                    - button "Hard" [ref=e742] [cursor=pointer]
+                    - button "Expert" [ref=e743] [cursor=pointer]
+                  - button "Play vs Bot (Hard)" [ref=e744] [cursor=pointer]:
+                    - img [ref=e745]
+                    - text: Play vs Bot (Hard)
+                - generic [ref=e748]:
+                  - button "Find Opponent" [ref=e749] [cursor=pointer]:
+                    - img [ref=e750]
+                    - text: Find Opponent
+                  - paragraph [ref=e755]: Free mode — ELO changes, no tokens
+  - button "Open Next.js Dev Tools" [ref=e126] [cursor=pointer]:
+    - img [ref=e127]
+  - alert [ref=e130]
