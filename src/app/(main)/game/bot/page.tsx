@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Chessboard } from "react-chessboard";
-import { ArrowLeft, Bot, RotateCcw, Trophy, Minus, X, Clock } from "lucide-react";
+import { Chess, type Square } from "chess.js";
+import { ArrowLeft, Bot, RotateCcw, Trophy, Minus, X, Clock, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useBotGame } from "@/features/chess-engine/hooks/useBotGame";
 import {
@@ -32,6 +33,10 @@ function BotGameInner() {
   const startedRef   = useRef(false);
   const [boardWidth, setBoardWidth] = useState(400);
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
+  const [legalSquares, setLegalSquares]     = useState<string[]>([]);
+  const [captureSquares, setCaptureSquares] = useState<Set<string>>(new Set());
+  const [preMoveEnabled, setPreMoveEnabled] = useState(false);
+  const [preMove, setPreMove]               = useState<{ from: string; to: string } | null>(null);
 
   const {
     fen, status, playerColor, lastMove, moves,
@@ -40,7 +45,7 @@ function BotGameInner() {
     startGame, beginPlay, makePlayerMove, resetGame,
   } = useBotGame();
 
-  // Responsive board — subtract bar heights so board never overflows
+  // Responsive board
   useEffect(() => {
     function measure() {
       if (!containerRef.current) return;
@@ -58,10 +63,42 @@ function BotGameInner() {
     movesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [moves.length]);
 
-  // Clear selection on state changes
+  // Clear selection on status/thinking changes (except isThinking=true when premove enabled)
   useEffect(() => {
-    setSelectedSquare(null);
-  }, [status, isThinking]);
+    if (!preMoveEnabled || status !== "playing") {
+      setSelectedSquare(null);
+      setLegalSquares([]);
+      setCaptureSquares(new Set());
+    }
+  }, [status]);
+
+  // Compute legal moves whenever selected square changes
+  useEffect(() => {
+    if (!selectedSquare) {
+      setLegalSquares([]);
+      setCaptureSquares(new Set());
+      return;
+    }
+    const chess = new Chess(fen);
+    const moves = chess.moves({ square: selectedSquare as Square, verbose: true });
+    setLegalSquares(moves.map(m => m.to));
+    setCaptureSquares(new Set(moves.filter(m => m.captured).map(m => m.to)));
+  }, [selectedSquare, fen]);
+
+  // Execute pre-move when bot finishes thinking
+  useEffect(() => {
+    if (!isThinking && preMove) {
+      const moved = makePlayerMove(preMove.from, preMove.to);
+      setPreMove(null);
+      setSelectedSquare(null);
+      setLegalSquares([]);
+      setCaptureSquares(new Set());
+      if (!moved) {
+        // Pre-move became illegal — silently discard
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isThinking]);
 
   // Parse URL params and kick off game
   useEffect(() => {
@@ -84,40 +121,98 @@ function BotGameInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile]);
 
-  const isFlipped      = playerColor === "black";
-  const isGameOver     = status !== "idle" && status !== "intro" && status !== "playing";
-  const botName        = `King Bot — ${DIFFICULTY_LABELS[difficulty]}`;
-  const botElo         = BOT_ELO_LABELS[difficulty];
-  const playerName     = profile?.full_name?.split("@")[0] ?? "Player";
-  const playerEloVal   = profile?.elo ?? 1200;
+  const isFlipped    = playerColor === "black";
+  const isGameOver   = status !== "idle" && status !== "intro" && status !== "playing";
+  const botName      = `King Bot — ${DIFFICULTY_LABELS[difficulty]}`;
+  const botElo       = BOT_ELO_LABELS[difficulty];
+  const playerName   = profile?.full_name?.split("@")[0] ?? "Player";
+  const playerEloVal = profile?.elo ?? 1200;
 
-  const isWhiteTurn        = fen.split(" ")[1] === "w";
-  const playerIsWhite      = playerColor === "white";
-  const playerTimeMs       = playerIsWhite ? whiteTimeMs : blackTimeMs;
-  const botTimeMs          = playerIsWhite ? blackTimeMs : whiteTimeMs;
-  const playerClockActive  = status === "playing" && !isThinking && (playerIsWhite === isWhiteTurn);
-  const botClockActive     = status === "playing" && (playerIsWhite !== isWhiteTurn);
-  const playerLow          = playerTimeMs !== null && playerTimeMs < 30_000;
-  const botLow             = botTimeMs    !== null && botTimeMs    < 30_000;
+  const isWhiteTurn       = fen.split(" ")[1] === "w";
+  const playerIsWhite     = playerColor === "white";
+  const playerTimeMs      = playerIsWhite ? whiteTimeMs : blackTimeMs;
+  const botTimeMs         = playerIsWhite ? blackTimeMs : whiteTimeMs;
+  const playerClockActive = status === "playing" && !isThinking && (playerIsWhite === isWhiteTurn);
+  const botClockActive    = status === "playing" && (playerIsWhite !== isWhiteTurn);
+  const playerLow         = playerTimeMs !== null && playerTimeMs < 30_000;
+  const botLow            = botTimeMs    !== null && botTimeMs    < 30_000;
+
+  // Dot style for legal move squares (chess.com style)
+  const legalDot: React.CSSProperties = {
+    background: "radial-gradient(circle, rgba(0,0,0,0.20) 29%, transparent 31%)",
+  };
+  const captureDot: React.CSSProperties = {
+    background: "radial-gradient(circle, transparent 55%, rgba(0,0,0,0.20) 57%, rgba(0,0,0,0.20) 70%, transparent 72%)",
+  };
 
   const customSquareStyles: Record<string, React.CSSProperties> = {
     ...(lastMove ? {
       [lastMove.from]: { backgroundColor: "rgba(255,255,0,0.3)" },
       [lastMove.to]:   { backgroundColor: "rgba(255,255,0,0.45)" },
     } : {}),
+    ...(preMove ? {
+      [preMove.from]: { backgroundColor: "rgba(255,140,0,0.45)" },
+      [preMove.to]:   { backgroundColor: "rgba(255,140,0,0.55)" },
+    } : {}),
     ...(selectedSquare ? {
       [selectedSquare]: { backgroundColor: "rgba(100,180,255,0.5)" },
     } : {}),
+    ...Object.fromEntries(
+      legalSquares.map(sq => [sq, captureSquares.has(sq) ? captureDot : legalDot])
+    ),
   };
 
+  const isPlayerTurn = status === "playing" && !isThinking &&
+    ((playerIsWhite && isWhiteTurn) || (!playerIsWhite && !isWhiteTurn));
+
   const handleSquareClick = ({ square }: { piece: string | null; square: string }) => {
-    if (status !== "playing" || isThinking) return;
+    if (status !== "playing") return;
+
+    // Pre-move mode: bot is thinking
+    if (isThinking && preMoveEnabled) {
+      if (selectedSquare) {
+        if (square === selectedSquare) {
+          // Deselect
+          setSelectedSquare(null);
+          setPreMove(null);
+          return;
+        }
+        // Register pre-move
+        setPreMove({ from: selectedSquare, to: square });
+        setSelectedSquare(null);
+        setLegalSquares([]);
+        setCaptureSquares(new Set());
+      } else {
+        // Select own piece to pre-move
+        const chess = new Chess(fen);
+        const piece = chess.get(square as Square);
+        const isOwnPiece = piece && (
+          (playerColor === "white" && piece.color === "w") ||
+          (playerColor === "black" && piece.color === "b")
+        );
+        if (isOwnPiece) setSelectedSquare(square);
+      }
+      return;
+    }
+
+    if (!isPlayerTurn) return;
+
     if (selectedSquare) {
+      if (square === selectedSquare) {
+        setSelectedSquare(null);
+        return;
+      }
       const moved = makePlayerMove(selectedSquare, square);
       setSelectedSquare(null);
       if (!moved) {
-        // Clicked a different own piece — select it instead
-        setSelectedSquare(square);
+        // Might be clicking another own piece — select it
+        const chess = new Chess(fen);
+        const piece = chess.get(square as Square);
+        const isOwnPiece = piece && (
+          (playerColor === "white" && piece.color === "w") ||
+          (playerColor === "black" && piece.color === "b")
+        );
+        if (isOwnPiece) setSelectedSquare(square);
       }
     } else {
       setSelectedSquare(square);
@@ -131,7 +226,6 @@ function BotGameInner() {
   }
 
   return (
-    // h-screen matches the online game layout — prevents board overflow
     <div className="flex h-screen w-full gap-4 p-4 overflow-hidden relative">
 
       {/* ── INTRO OVERLAY ─────────────────────────────────────────────── */}
@@ -139,9 +233,7 @@ function BotGameInner() {
         <div className="absolute inset-0 z-30 bg-bg-chess/95 backdrop-blur-sm flex items-center justify-center">
           <div className="flex flex-col items-center gap-8 px-6">
 
-            {/* Matchup */}
             <div className="flex items-center gap-10">
-              {/* Player */}
               <div className="flex flex-col items-center gap-2 min-w-[120px]">
                 <div className="w-20 h-20 rounded-2xl bg-primary-chess/20 border-2 border-primary-chess/40 flex items-center justify-center text-3xl font-black text-primary-chess">
                   {playerName[0]?.toUpperCase()}
@@ -155,7 +247,6 @@ function BotGameInner() {
 
               <span className="text-5xl font-black text-gray-700">VS</span>
 
-              {/* Bot */}
               <div className="flex flex-col items-center gap-2 min-w-[120px]">
                 <div className="w-20 h-20 rounded-2xl bg-primary-chess/20 border-2 border-primary-chess/40 flex items-center justify-center">
                   <Bot size={36} className="text-primary-chess" />
@@ -168,7 +259,6 @@ function BotGameInner() {
               </div>
             </div>
 
-            {/* Time badge */}
             {whiteTimeMs !== null && (
               <div className="flex items-center gap-2 bg-bg-panel border border-white/10 px-4 py-2 rounded-full text-gray-400 text-sm">
                 <Clock size={13} />
@@ -228,13 +318,14 @@ function BotGameInner() {
           )}
         </div>
 
-        {/* Board container — flex-1 takes remaining space */}
+        {/* Board container */}
         <div ref={containerRef} className="flex-1 flex items-center justify-center relative min-h-0 min-w-0">
           {(Chessboard as any)({
             options: {
               position: fen,
               onPieceDrop: ({ sourceSquare, targetSquare }: { piece: string; sourceSquare: string; targetSquare: string }) => {
                 setSelectedSquare(null);
+                setPreMove(null);
                 return makePlayerMove(sourceSquare, targetSquare);
               },
               onSquareClick: handleSquareClick,
@@ -251,7 +342,9 @@ function BotGameInner() {
           {isThinking && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-bg-panel/90 border border-primary-chess/20 px-3 py-1.5 rounded-full flex items-center gap-2 pointer-events-none">
               <span className="w-1.5 h-1.5 rounded-full bg-primary-chess animate-pulse" />
-              <span className="text-xs text-gray-400">Bot thinking…</span>
+              <span className="text-xs text-gray-400">
+                {preMove ? "Pre-move set…" : "Bot thinking…"}
+              </span>
             </div>
           )}
 
@@ -329,6 +422,7 @@ function BotGameInner() {
           <ArrowLeft size={14} /> Back to Play
         </button>
 
+        {/* Game info */}
         <div className="bg-bg-panel border border-white/5 rounded-xl p-4 flex flex-col gap-3">
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Bot Match</p>
           <div className="flex items-center justify-between">
@@ -353,6 +447,42 @@ function BotGameInner() {
             <span className="text-xs text-gray-400">Moves</span>
             <span className="text-xs font-bold text-white">{moves.length}</span>
           </div>
+        </div>
+
+        {/* Settings */}
+        <div className="bg-bg-panel border border-white/5 rounded-xl p-4 flex flex-col gap-3">
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Settings</p>
+
+          {/* Pre-move toggle */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Zap size={13} className={preMoveEnabled ? "text-primary-chess" : "text-gray-600"} />
+              <span className="text-xs text-gray-400">Pre-move</span>
+            </div>
+            <button
+              onClick={() => {
+                setPreMoveEnabled(v => !v);
+                if (preMoveEnabled) {
+                  setPreMove(null);
+                  setSelectedSquare(null);
+                  setLegalSquares([]);
+                  setCaptureSquares(new Set());
+                }
+              }}
+              className={`relative w-9 h-5 rounded-full transition-colors ${
+                preMoveEnabled ? "bg-primary-chess" : "bg-white/10"
+              }`}
+            >
+              <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                preMoveEnabled ? "translate-x-4" : "translate-x-0.5"
+              }`} />
+            </button>
+          </div>
+          {preMoveEnabled && (
+            <p className="text-[10px] text-gray-600 leading-tight">
+              Select your next move while the bot thinks. It executes automatically on your turn.
+            </p>
+          )}
         </div>
 
         {/* Move history */}
