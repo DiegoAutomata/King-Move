@@ -140,3 +140,10 @@ This project uses SaaS Factory V4. Available skills (invoke with `/skill-name`):
 
 ### 2026-03-30: No existe `npm run typecheck`
 - El script no está en package.json. Usar `npx tsc --noEmit` para type check.
+
+### 2026-03-31: react-chessboard v5 — API `options: {}` no props planas
+- **Error**: Pasar props directamente a `<Chessboard position={fen} squareStyles={...} />` hace que TODOS sean ignorados.
+- **Fix**: La v5 acepta `<Chessboard options={{ position, squareStyles, onSquareClick, ... }} />` — todo va dentro de `options`.
+- **Props renombradas en v5**: `customSquareStyles` → `squareStyles`, `arePiecesDraggable` → `allowDragging`, `customDarkSquareStyle` → `darkSquareStyle`, `boardWidth` → `boardStyle: { width, height }`.
+- **`onPieceDrop` firma v5**: recibe `{ piece, sourceSquare, targetSquare }` no `(from, to)`.
+- **Aplicar en**: Cualquier uso de `react-chessboard` en este proyecto.
